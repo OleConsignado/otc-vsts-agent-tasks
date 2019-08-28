@@ -1,6 +1,6 @@
 #!/bin/bash
 
-otc-task master shared.sh
+otc-task # master shared.sh
 
 hello-function
 
