@@ -1,6 +1,8 @@
 #!/bin/bash
 
-otc-task # master shared.sh
+export PATH="$PATH:/c/github/otc-vsts-agent"
+
+otc-task master shared.sh
 
 hello-function
 
