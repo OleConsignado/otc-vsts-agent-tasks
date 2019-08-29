@@ -1,5 +1,5 @@
 echo "OTC_TASK_ALWAYS_DOWNLOAD-shared: $OTC_TASK_ALWAYS_DOWNLOAD"
-echo "f-from-shared"
+echo "g-from-shared"
 
 function hello-function
 {
