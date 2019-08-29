@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+CONFIGURATION=$1
+if [ -z $CONFIGURATION ]
+then
+  echo "Missing CONFIGURATION"
+  echo "Usage: $0 CONFIGURATION"
+  exit 1
+fi
+
+dotnet clean ./Source
+rm -Rf $(find ./Source | egrep '/(bin|obj)$')
+dotnet build ./Source --configuration $CONFIGURATION

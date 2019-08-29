@@ -1,0 +1,18 @@
+#!/bin/bash 
+
+set -e
+
+EXIT_CODE=0
+SONARSCANNER_END_ARGS="/d:sonar.login=$SONARQUBE_USERKEY"
+export MSYS2_ARG_CONV_EXCL="*"
+dotnet sonarscanner end $SONARSCANNER_END_ARGS | tee sonarscanner-end-output
+SONARSCANNER_END_EXIT_CODE=${PIPESTATUS[0]}
+
+if [ $SONARSCANNER_END_EXIT_CODE -ne 0 ]
+then
+	EXIT_CODE=$SONARSCANNER_END_EXIT_CODE
+fi
+
+unset MSYS2_ARG_CONV_EXCL
+
+exit $EXIT_CODE

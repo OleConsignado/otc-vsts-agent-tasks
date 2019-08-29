@@ -1,0 +1,113 @@
+#!/bin/bash
+
+set -e
+NAMESPACE=$1
+if [ -z $NAMESPACE ]
+then
+  echo "Missing NAMESPACE"
+  echo "Usage: $0 NAMESPACE CONFIGURATION"
+  exit 1
+fi
+
+CONFIGURATION=$2
+if [ -z $CONFIGURATION ]
+then
+  echo "Missing CONFIGURATION"
+  echo "Usage: $0 NAMESPACE CONFIGURATION"
+  exit 1
+fi
+WORK_DIR=$(pwd)
+
+APPTAG="v$BUILD_BUILDID"
+
+TRANSIENT_BRACHNAME=transient/$APPTAG
+
+git checkout -b $TRANSIENT_BRACHNAME
+git config user.name "$BUILD_REQUESTEDFOR"
+git config user.email "$BUILD_REQUESTEDFOREMAIL"
+
+for HELMPATH in $(find -name Kubernetes.Helm)
+do
+  rm -Rf $BUILD_ARTIFACTSTAGINGDIRECTORY
+  mkdir $BUILD_ARTIFACTSTAGINGDIRECTORY
+  CHARTYAMLFILENAME=$HELMPATH/Chart.yaml
+  CHARTNAME=$(egrep '^name: ' $CHARTYAMLFILENAME | awk '{ print $2 }')
+
+  if [ -z $CHARTNAME ]
+  then
+    echo "Could not find the chartname, check file '$CHARTYAMLFILENAME'."
+    exit 1
+  fi
+
+  cd $(dirname $HELMPATH)
+  echo "Publishing $CHARTNAME"
+
+  dotnet publish --configuration $CONFIGURATION --no-build --output=$BUILD_ARTIFACTSTAGINGDIRECTORY
+  IMAGETAG=oleconsignado/$CHARTNAME:$APPTAG
+
+  cd $BUILD_ARTIFACTSTAGINGDIRECTORY
+
+  echo "Building docker image $IMAGETAG ..."
+  docker build . -t $IMAGETAG
+
+  echo "Pushing docker image $IMAGETAG ..."
+  docker push $IMAGETAG
+
+  cd $BUILD_SOURCESDIRECTORY
+  cd $HELMPATH
+
+  sed -ri "s/^  tag: .*/  tag: $APPTAG/" values.yaml
+  git add values.yaml
+
+  echo "Validating Helm (dry-run)"
+
+  if ! helm --namespace=$NAMESPACE install . --dry-run > /dev/null 2>&1
+  then
+    echo "helm dry-run failed"
+    helm --namespace=$NAMESPACE install . --dry-run --debug
+    exit 1
+  fi
+
+  RELEASE_NAME="r-$CHARTNAME-$NAMESPACE"
+
+  if helm --namespace=$NAMESPACE ls -q | egrep "$RELEASE_NAME\$" > /dev/null
+  then
+    # Release already exists, will upgrade
+    echo "Upgrading helm $RELEASE_NAME ..."
+    if ! helm --namespace=$NAMESPACE upgrade $RELEASE_NAME . # --set image.tag=$APPTAG .
+    then
+      echo "helm upgrade failed"
+      exit 1
+    fi
+  else
+    echo "Installing helm $RELEASE_NAME ..."
+    if ! helm --namespace=$NAMESPACE install --name=$RELEASE_NAME . # --set image.tag=$APPTAG .
+    then
+      echo "helm install failed"
+      exit 1
+    fi
+  fi
+
+  cd $WORK_DIR
+done
+
+git commit -m "Updated values.yaml: image.tag to $APPTAG"
+git tag $APPTAG
+git checkout $APPTAG > /dev/null 2>&1
+#git branch -d $TRANSIENT_BRACHNAME > /dev/null 2>&1
+BUILD_REPOSITORY_URI_WITH_CREEDENTIALS=$(echo $BUILD_REPOSITORY_URI | sed -r "s/(^https?:\/\/)(.*)/\\1_:$VCS_TOKEN@\2/")
+git remote add authrepo $BUILD_REPOSITORY_URI_WITH_CREEDENTIALS > /dev/null 2>&1
+
+EXIT_CODE=0
+
+if ! git push -u authrepo $TRANSIENT_BRACHNAME --tags > /dev/null 2>&1 # prevent expose creedential
+then
+  PUSH_EXIT_CODE=$?
+  echo "Fail pushing, git push exit code: $PUSH_EXIT_CODE"
+  EXIT_CODE=1
+fi
+
+git remote rm authrepo > /dev/null 2>&1
+git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1
+
+exit $EXIT_CODE

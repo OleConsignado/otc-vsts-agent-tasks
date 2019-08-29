@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+WORK_DIR=$(pwd)    
+for HELMPATH in $(find -name Kubernetes.Helm)
+do
+  cd $HELMPATH
+  echo "Validating Helm (dry-run)"
+
+  if ! helm install . --dry-run > /dev/null 2>&1
+  then
+    echo "helm dry-run failed"
+    helm install . --dry-run --debug
+    exit 1
+  fi
+  cd $WORK_DIR
+done
