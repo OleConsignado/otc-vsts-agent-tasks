@@ -4,7 +4,7 @@ export PATH="$PATH:/c/github/otc-vsts-agent"
 
 #source <(otc-task --download-only $OTC_TASK_VERSION_PATH_SEGMENT shared.sh)
 
-otc-task-include shared.sh
+source <(otc-task-include shared.sh)
 
 hello-function
 
