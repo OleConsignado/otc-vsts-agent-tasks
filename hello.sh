@@ -2,7 +2,7 @@
 
 export PATH="$PATH:/c/github/otc-vsts-agent"
 
-source $(otc-task --always-download --download-only master shared.sh)
+source $(otc-task --download-only master shared.sh)
 
 hello-function
 
