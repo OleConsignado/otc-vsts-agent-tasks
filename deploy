@@ -20,22 +20,51 @@ then
   exit 1
 fi
 
+IS_PULLREQUEST=false
+
+if [ "$BUILD_REASON" = "PullRequest" ]
+then
+  IS_PULLREQUEST=true
+fi
+
+NOT_DOTNET=false
+
+if [ "$3" == "--not-dotnet" ]
+then
+  NOT_DOTNET=true
+fi
+
 WORK_DIR=$(pwd)
 
 K8S_CLUSTER_NAME="k8s01.oleconsignado.com.br"
 
-if [ "$BUILD_REASON" = "PullRequest" ]
+if $IS_PULLREQUEST
 then
   APPTAG="pr$SYSTEM_PULLREQUEST_PULLREQUESTID-$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
 else
+  BUILD_REPOSITORY_URI_WITH_CREEDENTIALS=$(echo $BUILD_REPOSITORY_URI | sed -r "s/(^https?:\/\/)(.*)/\\1_:$VCS_TOKEN@\2/")
+  
+  if git remote | grep authrepo > /dev/null 2>&1 
+  then
+    git remote rm authrepo > /dev/null 2>&1
+  fi
+
+  git remote add authrepo $BUILD_REPOSITORY_URI_WITH_CREEDENTIALS > /dev/null 2>&1 
+
   APPTAG="v$BUILD_BUILDID"  
+  git checkout $BUILD_SOURCEBRANCHNAME
+  git pull authrepo $BUILD_SOURCEBRANCHNAME
+  LAST_COMMIT=$(git log --format="%H" -n 1)
+
+  if [ "$LAST_COMMIT" != "$BUILD_SOURCEVERSION" ]
+  then
+    echo "HEAD changed (expected $BUILD_SOURCEVERSION but $LAST_COMMIT)"
+    exit 10
+  fi
+
+  git config user.name "$BUILD_REQUESTEDFOR"
+  git config user.email "$BUILD_REQUESTEDFOREMAIL"   
 fi
-
-TRANSIENT_BRACHNAME=transient/$APPTAG
-
-git checkout -b $TRANSIENT_BRACHNAME
-git config user.name "$BUILD_REQUESTEDFOR"
-git config user.email "$BUILD_REQUESTEDFOREMAIL"
 
 for HELMPATH in $(find -name Kubernetes.Helm)
 do
@@ -53,7 +82,13 @@ do
   cd $(dirname $HELMPATH)
   echo "Publishing $CHARTNAME"
 
-  dotnet publish --configuration $CONFIGURATION --no-build --output=$BUILD_ARTIFACTSTAGINGDIRECTORY
+  if $NOT_DOTNET
+  then
+    cp -R * $BUILD_ARTIFACTSTAGINGDIRECTORY
+  else
+    dotnet publish --configuration $CONFIGURATION --no-build --output=$BUILD_ARTIFACTSTAGINGDIRECTORY
+  fi
+  
   IMAGETAG=oleconsignado/$CHARTNAME:$APPTAG
 
   cd $BUILD_ARTIFACTSTAGINGDIRECTORY
@@ -68,7 +103,11 @@ do
   cd $HELMPATH
 
   sed -ri "s/^  tag: .*/  tag: $APPTAG/" values.yaml
-  git add values.yaml
+  
+  if ! $IS_PULLREQUEST
+  then
+    git add values.yaml
+  fi
 
   echo "Validating Helm (dry-run)"
 
@@ -79,7 +118,7 @@ do
     exit 1
   fi
 
-  if [ "$BUILD_REASON" = "PullRequest" ]
+  if $IS_PULLREQUEST
   then
     RELEASE_NAME="r-$CHARTNAME-$NAMESPACE-eph-pr$SYSTEM_PULLREQUEST_PULLREQUESTID"
     VALUES_NAME="$CHARTNAME-eph-pr$SYSTEM_PULLREQUEST_PULLREQUESTID"
@@ -104,6 +143,7 @@ do
     if ! helm --namespace=$NAMESPACE install --name=$RELEASE_NAME $HELM_SET_ARGS .
     then
       echo "helm install failed"
+      helm delete $RELEASE_NAME --purge
       exit 1
     fi
   fi
@@ -147,7 +187,7 @@ do
   echo "Checking POD status."
 
   POOLING_ATTEMPS=0
-  MAX_POOLING_ATTEMPS=60
+  MAX_POOLING_ATTEMPS=180
   DEPLOY_VALIDATION_COMPLETED=false
   DEPLOY_SUCESS=false
   POD_STATUS_PENDING=false
@@ -249,12 +289,13 @@ do
   echo
   echo -e "\e[32m$RELEASE_NAME successfuly deployed."
 
-  if [ "$BUILD_REASON" = "PullRequest" ]
+  if $IS_PULLREQUEST
   then
+    SOURCECOMMITID_SHORT=$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')
     PREVIEW_URL="http://$VALUES_NAME.$NAMESPACE.$K8S_CLUSTER_NAME"
     PR_COMMENT_TEXT="Foi publicado uma prévia da aplicação no endereço [$PREVIEW_URL]($PREVIEW_URL). \
 A versão publicada corresponde ao commit \
-[$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID) \
+[$SOURCECOMMITID_SHORT]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID) \
 e ela estará disponível enquanto este *Pull Request* estiver aberto."
     PR_COMMENT_ID=$(comment-pull-request "$PR_COMMENT_TEXT")
     pull-request-comment-change-status $PR_COMMENT_ID 4 # 4 = closed
@@ -263,23 +304,22 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
   cd $WORK_DIR
 done
 
-git commit -m "Updated values.yaml: image.tag to $APPTAG"
-git tag $APPTAG
-git checkout $APPTAG > /dev/null 2>&1
-#git branch -d $TRANSIENT_BRACHNAME > /dev/null 2>&1
-BUILD_REPOSITORY_URI_WITH_CREEDENTIALS=$(echo $BUILD_REPOSITORY_URI | sed -r "s/(^https?:\/\/)(.*)/\\1_:$VCS_TOKEN@\2/")
-git remote add authrepo $BUILD_REPOSITORY_URI_WITH_CREEDENTIALS > /dev/null 2>&1
-
 EXIT_CODE=0
 
-if ! git push -u authrepo $TRANSIENT_BRACHNAME --tags > /dev/null 2>&1 # prevent expose creedential
+if ! $IS_PULLREQUEST
 then
-  PUSH_EXIT_CODE=$?
-  echo "Fail pushing, git push exit code: $PUSH_EXIT_CODE"
-  EXIT_CODE=1
-fi
+  git commit -m "Updated values.yaml: image.tag to $APPTAG [skip ci]"
+  git tag $APPTAG
+  #git checkout $APPTAG > /dev/null 2>&1
 
-git remote rm authrepo > /dev/null 2>&1
-git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1
+  if ! git push -u authrepo $BUILD_SOURCEBRANCHNAME --tags > gitpush.log 2>&1 # prevent expose creedential
+  then
+    echo "Fail pushing."
+    EXIT_CODE=1
+  fi
+
+  git remote rm authrepo > /dev/null 2>&1
+  git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1
+fi
 
 exit $EXIT_CODE
