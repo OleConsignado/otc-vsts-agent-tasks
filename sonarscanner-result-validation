@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source <(otc-task-include shared.sh)
+source <(otc-task-include lib/vsts.sh)
 
 # Validade result
 TASK_STATUS_URL=$(grep 'INFO: More about the report processing at ' sonarscanner-end-output | egrep -o 'https?://.*')
@@ -63,7 +63,7 @@ do
 
         PR_COMMENT_TEXT="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
 Verifique o resultado em [$REPORT_URL]($REPORT_URL)."
-        PR_COMMENT_ID=$(comment-pull-request "$PR_COMMENT_TEXT")
+        PR_COMMENT_ID=$(vsts-comment-pull-request "$SYSTEM_PULLREQUEST_PULLREQUESTID" "$PR_COMMENT_TEXT")
 
         echo "Sonar result:"
         echo "--------------------------------------"
