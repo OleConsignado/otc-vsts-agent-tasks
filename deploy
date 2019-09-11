@@ -2,324 +2,146 @@
 
 set -e
 
-source <(otc-task-include shared.sh)
+source <(otc-task-include lib/filesystem.sh)
+source <(otc-task-include lib/vsts.sh)
+source <(otc-task-include lib/dotnet.sh)
+source <(otc-task-include lib/docker.sh)
+source <(otc-task-include lib/helm.sh)
+source <(otc-task-include lib/deploy.sh)
 
-NAMESPACE=$1
-if [ -z $NAMESPACE ]
+ORGANIZATION="oleconsignado"
+
+namespace=$1
+configuration=$2
+
+if [ -z "$namespace" ]
 then
-  echo "Missing NAMESPACE"
-  echo "Usage: $0 NAMESPACE CONFIGURATION"
-  exit 1
+	echo "Missing namespace"
+	echo "Usage: $0 namespace configuration"
+	exit 1
 fi
 
-CONFIGURATION=$2
-if [ -z $CONFIGURATION ]
+if [ -z "$configuration" ]
 then
-  echo "Missing CONFIGURATION"
-  echo "Usage: $0 NAMESPACE CONFIGURATION"
-  exit 1
+	echo "Missing configuration"
+	echo "Usage: $0 namespace configuration"
+	exit 1
 fi
 
-IS_PULLREQUEST=false
+is_pullrequest=false
 
 if [ "$BUILD_REASON" = "PullRequest" ]
 then
-  IS_PULLREQUEST=true
+	is_pullrequest=true
+	pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 fi
 
-NOT_DOTNET=false
+# Required environment variables:
+# - BUILD_REPOSITORY_URI
+# - VCS_TOKEN
+# - BUILD_SOURCEBRANCHNAME
+# - BUILD_SOURCEVERSION
+# - BUILD_REQUESTEDFOR
+# - BUILD_REQUESTEDFOREMAIL
+function prepare-local-repo-for-changes
+{
+	local repo_uri_with_creedentials=$(echo $BUILD_REPOSITORY_URI | \
+		sed -r "s/(^https?:\/\/)(.*)/\\1_:$VCS_TOKEN@\2/")
 
-if [ "$3" == "--not-dotnet" ]
+	if git remote | grep authrepo > /dev/null 2>&1 
+	then
+		git remote rm authrepo > /dev/null 2>&1
+	fi
+
+	git remote add authrepo $repo_uri_with_creedentials > /dev/null 2>&1 
+
+	git checkout $BUILD_SOURCEBRANCHNAME
+	git pull authrepo $BUILD_SOURCEBRANCHNAME
+	local last_commit=$(git log --format="%H" -n 1)
+
+	if [ "$last_commit" != "$BUILD_SOURCEVERSION" ]
+	then
+		echo "HEAD changed (expected $BUILD_SOURCEVERSION but $last_commit)"
+		exit 10
+	fi
+
+	git config user.name "$BUILD_REQUESTEDFOR"
+	git config user.email "$BUILD_REQUESTEDFOREMAIL"
+}
+
+TAG_AND_COMMIT_CHANGES_MISS_TAG=21
+TAG_AND_COMMIT_CHANGES_PUSH_ERROR=22
+
+# Param tag
+# Required environmento variables:
+# - BUILD_SOURCEBRANCHNAME
+# - BUILD_SOURCEVERSION
+function commit-changes-and-tag
+{
+	tag=$1
+
+	if [ -z "$tag" ]
+	then
+		echo "commit-changes-and-tag: missing tag" >&2
+
+		return $TAG_AND_COMMIT_CHANGES_MISS_TAG
+	fi
+
+	echo "Comminting changes to remote repository ..."
+
+	git status
+	git commit -m "Build $tag [skip ci]"
+	git tag "$tag"
+
+	if ! git push -u authrepo $BUILD_SOURCEBRANCHNAME --tags > gitpush.log 2>&1 # prevent expose creedential
+	then
+		echo "commit-changes-and-tag: git push error." >&2
+		
+		return $TAG_AND_COMMIT_CHANGES_PUSH_ERROR
+	fi
+
+	git remote rm authrepo > /dev/null 2>&1
+	git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1	
+}
+
+artifact_suffix=''
+
+if $is_pullrequest
 then
-  NOT_DOTNET=true
-fi
-
-WORK_DIR=$(pwd)
-
-K8S_CLUSTER_NAME="k8s01.oleconsignado.com.br"
-
-if $IS_PULLREQUEST
-then
-  APPTAG="pr$SYSTEM_PULLREQUEST_PULLREQUESTID-$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
+	artifact_suffix="-eph-pr$pullrequest_id"
+	tag="$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | \
+		egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
 else
-  BUILD_REPOSITORY_URI_WITH_CREEDENTIALS=$(echo $BUILD_REPOSITORY_URI | sed -r "s/(^https?:\/\/)(.*)/\\1_:$VCS_TOKEN@\2/")
-  
-  if git remote | grep authrepo > /dev/null 2>&1 
-  then
-    git remote rm authrepo > /dev/null 2>&1
-  fi
-
-  git remote add authrepo $BUILD_REPOSITORY_URI_WITH_CREEDENTIALS > /dev/null 2>&1 
-
-  APPTAG="v$BUILD_BUILDID"  
-  git checkout $BUILD_SOURCEBRANCHNAME
-  git pull authrepo $BUILD_SOURCEBRANCHNAME
-  LAST_COMMIT=$(git log --format="%H" -n 1)
-
-  if [ "$LAST_COMMIT" != "$BUILD_SOURCEVERSION" ]
-  then
-    echo "HEAD changed (expected $BUILD_SOURCEVERSION but $LAST_COMMIT)"
-    exit 10
-  fi
-
-  git config user.name "$BUILD_REQUESTEDFOR"
-  git config user.email "$BUILD_REQUESTEDFOREMAIL"   
+	tag="v$BUILD_BUILDID"
+	prepare-local-repo-for-changes
 fi
 
-for HELMPATH in $(find -name Kubernetes.Helm)
-do
-  rm -Rf $BUILD_ARTIFACTSTAGINGDIRECTORY
-  mkdir $BUILD_ARTIFACTSTAGINGDIRECTORY
-  CHARTYAMLFILENAME=$HELMPATH/Chart.yaml
-  CHARTNAME=$(egrep '^name: ' $CHARTYAMLFILENAME | awk '{ print $2 }')
+solution_dir="$BUILD_SOURCESDIRECTORY/Source"
+deployed_releases_list=$(mktemp --suffix="dep-rel-$BUILD_BUILDID")
 
-  if [ -z $CHARTNAME ]
-  then
-    echo "Could not find the chartname, check file '$CHARTYAMLFILENAME'."
-    exit 1
-  fi
-
-  cd $(dirname $HELMPATH)
-  echo "Publishing $CHARTNAME"
-
-  if $NOT_DOTNET
-  then
-    cp -R * $BUILD_ARTIFACTSTAGINGDIRECTORY
-  else
-    dotnet publish --configuration $CONFIGURATION --no-build --output=$BUILD_ARTIFACTSTAGINGDIRECTORY
-  fi
-  
-  IMAGETAG=oleconsignado/$CHARTNAME:$APPTAG
-
-  cd $BUILD_ARTIFACTSTAGINGDIRECTORY
-
-  echo "Building docker image $IMAGETAG ..."
-  docker build . -t $IMAGETAG
-
-  echo "Pushing docker image $IMAGETAG ..."
-  docker push $IMAGETAG
-
-  cd $BUILD_SOURCESDIRECTORY
-  cd $HELMPATH
-
-  sed -ri "s/^  tag: .*/  tag: $APPTAG/" values.yaml
-  
-  if ! $IS_PULLREQUEST
-  then
-    git add values.yaml
-  fi
-
-  echo "Validating Helm (dry-run)"
-
-  if ! helm --namespace=$NAMESPACE install . --dry-run > /dev/null 2>&1
-  then
-    echo "helm dry-run failed"
-    helm --namespace=$NAMESPACE install . --dry-run --debug
-    exit 1
-  fi
-
-  if $IS_PULLREQUEST
-  then
-    RELEASE_NAME="r-$CHARTNAME-$NAMESPACE-eph-pr$SYSTEM_PULLREQUEST_PULLREQUESTID"
-    VALUES_NAME="$CHARTNAME-eph-pr$SYSTEM_PULLREQUEST_PULLREQUESTID"
-  else
-    RELEASE_NAME="r-$CHARTNAME-$NAMESPACE"
-    VALUES_NAME="$CHARTNAME"
-  fi
-
-  HELM_SET_ARGS="--set Name=$VALUES_NAME --set=EphCreatedAt=$(date --iso-8601=s)"
-
-  if helm --namespace=$NAMESPACE ls -q | egrep "$RELEASE_NAME\$" > /dev/null
-  then
-    # Release already exists, will upgrade
-    echo "Upgrading helm $RELEASE_NAME ..."
-    if ! helm --namespace=$NAMESPACE upgrade $RELEASE_NAME $HELM_SET_ARGS .
-    then
-      echo "helm upgrade failed"
-      exit 1
-    fi
-  else
-    echo "Installing helm $RELEASE_NAME ..."
-    if ! helm --namespace=$NAMESPACE install --name=$RELEASE_NAME $HELM_SET_ARGS .
-    then
-      echo "helm install failed"
-      helm delete $RELEASE_NAME --purge
-      exit 1
-    fi
-  fi
-
-  # Deploy validation
-
-  # Check POD creation
-
-  RELEASE_REVISION=$(helm get $RELEASE_NAME | head -1 | grep ^REVISION: | awk '{ print $2 }')
-
-  if ! echo $RELEASE_REVISION | egrep '^[1-9][0-9]*$' > /dev/null 2>&1
-  then
-    echo "Could not get helm release revision"
-    exit 1
-  fi
-
-  echo -n "Checking POD creation."
-  POOLING_ATTEMPS=0
-  KUBECTL_GET_POD_CMD="kubectl -n $NAMESPACE get pod -l release=$RELEASE_NAME,revision=$RELEASE_REVISION -ojson"
-
-  while : 
-    [ "$($KUBECTL_GET_POD_CMD | jq -M '.items[0]')" = "null" ]
-  do
-
-    if [ "$POOLING_ATTEMPS" -gt 30 ]
-    then
-      echo "... FAILED"
-      echo "Could not validate POD creation."
-      exit 1
-    fi
-
-    echo -n '.'
-    sleep 1
-    POOLING_ATTEMPS=$((POOLING_ATTEMPS+1))
-  done
-
-  echo "... OK"
-
-  # check POD status
-  
-  echo "Checking POD status."
-
-  POOLING_ATTEMPS=0
-  MAX_POOLING_ATTEMPS=180
-  DEPLOY_VALIDATION_COMPLETED=false
-  DEPLOY_SUCESS=false
-  POD_STATUS_PENDING=false
-
-  while : 
-    [ "$POOLING_ATTEMPS" -lt "$MAX_POOLING_ATTEMPS" ] && ! $DEPLOY_VALIDATION_COMPLETED
-  do
-    POD_STATUS=$($KUBECTL_GET_POD_CMD | jq -M '.items[0]?.status')
-    CONTAINER_STATUS=$(echo $POD_STATUS | jq -M '.containerStatuses[0]?.state')
-
-    if [ "$CONTAINER_STATUS" = "null" ] && [ "$(echo $POD_STATUS | jq -Mr '.phase')" = "Pending" ]
-    then
-      POD_STATUS_PENDING=true
-      POOLING_ATTEMPS_STEP="PENDING"
-      echo "Pending..."
-    else
-      POD_STATUS_PENDING=false
-
-      if [ "$CONTAINER_STATUS" = "null" ]
-      then
-        POOLING_ATTEMPS_STEP="INITIAL"
-        echo "Waiting..."
-      elif [ "$(echo $CONTAINER_STATUS | jq -M '.waiting')" != "null" ]
-      then
-        POOLING_ATTEMPS_STEP="CONTAINER_CREATING"
-
-        REASON=$(echo $CONTAINER_STATUS | jq -Mr '.waiting.reason')
-        
-        echo "Waiting: $REASON"
-
-        if [ "$REASON" = "CrashLoopBackOff" ]
-        then
-          DEPLOY_VALIDATION_COMPLETED=true
-          DEPLOY_SUCESS=false
-        fi
-
-      elif [ "$(echo $CONTAINER_STATUS | jq -M '.running')" != "null" ] 
-      then
-        #echo $CONTAINER_STATUS | jq -M '.running'
-        POOLING_ATTEMPS_STEP="CHECK_READYNESS"
-        POD_READY=$(echo $POD_STATUS | jq -Mr '.conditions[] | select(.type == "Ready") | .status')
-
-        if [ "$POD_READY" = "True" ]
-        then
-          DEPLOY_VALIDATION_COMPLETED=true
-          DEPLOY_SUCESS=true
-        else
-          echo "Container running... Looking for ready status [$POD_READY]"
-        fi
-
-      elif [ "$(echo $CONTAINER_STATUS | jq -M '.terminated')" != "null" ] 
-      then
-        REASON=$(echo $CONTAINER_STATUS | jq -Mr '.terminated.reason')
-        echo "Terminated: $REASON" # REASON: Error
-
-        DEPLOY_VALIDATION_COMPLETED=true
-        DEPLOY_SUCESS=false
-      else
-        echo "## STATUS NOT MAPPED ##################################################"
-        echo $CONTAINER_STATUS
-      fi
-    fi
-
-    if [ "$PREV_POOLING_ATTEMPS_STEP" != "$POOLING_ATTEMPS_STEP" ]
-    then
-      POOLING_ATTEMPS=0
-    fi
-
-    PREV_POOLING_ATTEMPS_STEP=$POOLING_ATTEMPS_STEP
-
-    sleep 1
-    POOLING_ATTEMPS=$((POOLING_ATTEMPS+1))
-  done
-
-  if ! $DEPLOY_SUCESS
-  then
-    if $POD_STATUS_PENDING
-    then
-      echo -e "\e[31mError while trying to start $RELEASE_NAME."
-      echo "POD pending: Kubernetes low on resources."
-    elif ! $DEPLOY_VALIDATION_COMPLETED
-    then
-      echo -e "\e[31mCould not validate deployment, the POD is taking a long time to get ready, should be something wrong on Kubernetes Cluster."
-      echo "## POD details ##################################################"
-      kubectl -n $NAMESPACE describe pod -l release=$RELEASE_NAME,revision=$RELEASE_REVISION
-    else
-      echo -e "\e[31mError while trying to start $RELEASE_NAME"
-      if ! kubectl -n $NAMESPACE logs -l release=$RELEASE_NAME,revision=$RELEASE_REVISION -p
-      then
-        echo "Could not get container logs."
-      fi
-    fi
-
-    helm delete $RELEASE_NAME --purge
-    exit 4
-  fi
-
-
-  echo
-  echo -e "\e[32m$RELEASE_NAME successfuly deployed."
-
-  if $IS_PULLREQUEST
-  then
-    SOURCECOMMITID_SHORT=$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')
-    PREVIEW_URL="http://$VALUES_NAME.$NAMESPACE.$K8S_CLUSTER_NAME"
-    PR_COMMENT_TEXT="Foi publicado uma prévia da aplicação no endereço [$PREVIEW_URL]($PREVIEW_URL). \
-A versão publicada corresponde ao commit \
-[$SOURCECOMMITID_SHORT]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID) \
-e ela estará disponível enquanto este *Pull Request* estiver aberto."
-    PR_COMMENT_ID=$(comment-pull-request "$PR_COMMENT_TEXT")
-    pull-request-comment-change-status $PR_COMMENT_ID 4 # 4 = closed
-  fi
-
-  cd $WORK_DIR
-done
-
-EXIT_CODE=0
-
-if ! $IS_PULLREQUEST
+if deploy "$solution_dir" "$configuration" "$tag" "$namespace" "$artifact_suffix" "$deployed_releases_list"
 then
-  git commit -m "Updated values.yaml: image.tag to $APPTAG [skip ci]"
-  git tag $APPTAG
-  #git checkout $APPTAG > /dev/null 2>&1
+	if $is_pullrequest
+	then
+		for release_name in $(cat "$deployed_releases_list")
+		do		
+			commit_short=$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')
+			preview_url="http://$(kubectl -n $namespace get ingress -l release=$release_name -ojson | \
+				jq -r '.items[].spec.rules[].host')/"
 
-  if ! git push -u authrepo $BUILD_SOURCEBRANCHNAME --tags > gitpush.log 2>&1 # prevent expose creedential
-  then
-    echo "Fail pushing."
-    EXIT_CODE=1
-  fi
+			comment_text="Foi publicado uma prévia da aplicação no endereço [$preview_url]($preview_url). \
+A versão publicada corresponde ao commit \
+[$commit_short]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID) \
+e ela estará disponível enquanto este *Pull Request* estiver aberto."
+    		comment_id=$(vsts-comment-pull-request $pullrequest_id "$comment_text")
+    		vsts-pull-request-comment-change-status $pullrequest_id $comment_id 4 # 4 = closed
+		done
 
-  git remote rm authrepo > /dev/null 2>&1
-  git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1
+		rm "$deployed_releases_list"
+	else
+		commit-changes-and-tag "$tag"
+	fi
+else
+	exit 11
 fi
 
-exit $EXIT_CODE

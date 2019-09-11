@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# EXECUTE otc-task locally for development
+
+TASKS_DIRECTORY=$(realpath $(dirname $0))
+
+OTC_TASK_INCLUDE_LOCAL_TASK_NOT_FOUND=34
+
+function otc-task-include
+{
+	local task_path="${TASKS_DIRECTORY}/$1"
+ 	
+ 	if ! [ -f "$task_path" ]
+ 	then
+ 		echo "File '$task_path' not found." >&2
+
+ 		return $OTC_TASK_INCLUDE_LOCAL_TASK_NOT_FOUND
+ 	fi
+
+ 	cat $task_path
+}
+
+script_path="${TASKS_DIRECTORY}/$1"
+
+if ! [ -f "$script_path" ]
+then
+	echo "File '$script_path' not found." >&2
+
+	exit 43
+fi
+
+shift
+source $script_path
