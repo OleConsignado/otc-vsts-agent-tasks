@@ -153,7 +153,6 @@ function vsts-pull-request-comment-change-status
 	fi	
 
 	local repository_id=$(vsts-get-repoid-by-prid "$pullrequest_id")
-  	local payload="{ \"status\": $comment_status }"
  
 	vsts-request "PATCH" \
 		"/_apis/git/repositories/$repository_id/pullrequests/$pullrequest_id/threads/$comment_id?api-version=5.1" \
