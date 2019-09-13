@@ -24,7 +24,7 @@ function vsts-request
 
 	if [ -z "$path" ]
 	then
-		echo "" >&2
+		echo "vsts-request: path is missing." >&2
 
 		return $VSTS_POST_JSON_MISS_PATH
 	fi
