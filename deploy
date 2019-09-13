@@ -23,7 +23,7 @@ PUBLISH_DEPLOY_LINK_PR_FEED_MISS_PR_ID=13
 # Param namespace
 # Param release_name
 # Required environment variables:
-#   - SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI (only if "$BUILD_REASON" = "PullRequest")
+#   - SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI
 function publish_deploy_link_on_pr_feed
 {
 	local pullrequest_id=$1
@@ -84,16 +84,17 @@ DEPLOY_MAIN_MISS_REQUIRED_PR_ENV_VARS=5
 # Param configuration
 # Required environment variables:
 #   - BUILD_REASON
-#   - SYSTEM_PULLREQUEST_SOURCECOMMITID
 #   - BUILD_BUILDID
 #   - BUILD_SOURCESDIRECTORY
+#   - Required if "$BUILD_REASON" = "PullRequest"
+#     - SYSTEM_PULLREQUEST_PULLREQUESTID
+#     - SYSTEM_PULLREQUEST_SOURCECOMMITID
 function main
 {
 	local namespace=$1
 	local configuration=$2
 
 	if [ -z "$BUILD_REASON" ] || \
-		[ -z "$SYSTEM_PULLREQUEST_SOURCECOMMITID" ] || \
 		[ -z "$BUILD_BUILDID" ] || \
 		[ -z "$BUILD_SOURCESDIRECTORY" ]
 	then
@@ -106,7 +107,8 @@ function main
 
 	if [ "$BUILD_REASON" = "PullRequest" ]
 	then
-		if [ -z "$SYSTEM_PULLREQUEST_PULLREQUESTID" ]
+		if [ -z "$SYSTEM_PULLREQUEST_SOURCECOMMITID" ] || \
+			[ -z "$SYSTEM_PULLREQUEST_PULLREQUESTID" ]
 		then
 			echo "Missing required PR environment variables, look at script source to see details." >&2
 			return $DEPLOY_MAIN_MISS_REQUIRED_PR_ENV_VARS
