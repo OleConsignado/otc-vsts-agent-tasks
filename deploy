@@ -8,138 +8,161 @@ source <(otc-task-include lib/dotnet.sh)
 source <(otc-task-include lib/docker.sh)
 source <(otc-task-include lib/helm.sh)
 source <(otc-task-include lib/deploy.sh)
+source <(otc-task-include lib/git.sh)
 
 ORGANIZATION="oleconsignado"
 
-namespace=$1
-configuration=$2
+PUBLISH_DEPLOY_LINK_PR_FEED_MISS_ENV_VARS=9
+PUBLISH_DEPLOY_LINK_PR_FEED_MISS_NAMESPACE=10
+PUBLISH_DEPLOY_LINK_PR_FEED_MISS_RELEASE_NAME=11
+PUBLISH_DEPLOY_LINK_PR_FEED_MISS_COMMIT_ID=12
+PUBLISH_DEPLOY_LINK_PR_FEED_MISS_PR_ID=13
 
-if [ -z "$namespace" ]
-then
-	echo "Missing namespace"
-	echo "Usage: $0 namespace configuration"
-	exit 1
-fi
-
-if [ -z "$configuration" ]
-then
-	echo "Missing configuration"
-	echo "Usage: $0 namespace configuration"
-	exit 1
-fi
-
-is_pullrequest=false
-
-if [ "$BUILD_REASON" = "PullRequest" ]
-then
-	is_pullrequest=true
-	pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-fi
-
+# Param pullrequest_id
+# Param commit_id
+# Param namespace
+# Param release_name
 # Required environment variables:
-# - BUILD_REPOSITORY_URI
-# - VCS_TOKEN
-# - BUILD_SOURCEBRANCHNAME
-# - BUILD_SOURCEVERSION
-# - BUILD_REQUESTEDFOR
-# - BUILD_REQUESTEDFOREMAIL
-function prepare-local-repo-for-changes
+#   - SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI (only if "$BUILD_REASON" = "PullRequest")
+function publish_deploy_link_on_pr_feed
 {
-	local repo_uri_with_creedentials=$(echo $BUILD_REPOSITORY_URI | \
-		sed -r "s/(^https?:\/\/)(.*)/\\1_:$VCS_TOKEN@\2/")
+	local pullrequest_id=$1
+	local commit_id=$2
+	local namespace=$3
+	local release_name=$4
 
-	if git remote | grep authrepo > /dev/null 2>&1 
+	if [ -z "$pullrequest_id" ]
 	then
-		git remote rm authrepo > /dev/null 2>&1
+		echo "publish_deploy_link_on_pr_feed: Missing pullrequest_id" >&2
+		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_PR_ID
 	fi
 
-	git remote add authrepo $repo_uri_with_creedentials > /dev/null 2>&1 
-
-	git checkout $BUILD_SOURCEBRANCHNAME
-	git pull authrepo $BUILD_SOURCEBRANCHNAME
-	local last_commit=$(git log --format="%H" -n 1)
-
-	if [ "$last_commit" != "$BUILD_SOURCEVERSION" ]
+	if [ -z "$commit_id" ]
 	then
-		echo "HEAD changed (expected $BUILD_SOURCEVERSION but $last_commit)"
-		exit 10
+		echo "publish_deploy_link_on_pr_feed: Missing commit_id" >&2
+		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_COMMIT_ID
 	fi
 
-	git config user.name "$BUILD_REQUESTEDFOR"
-	git config user.email "$BUILD_REQUESTEDFOREMAIL"
+	if [ -z "$namespace" ]
+	then
+		echo "publish_deploy_link_on_pr_feed: Missing namespace" >&2
+		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_NAMESPACE
+	fi
+
+	if [ -z "$release_name" ]
+	then
+		echo "publish_deploy_link_on_pr_feed: Missing release_name" >&2
+		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_RELEASE_NAME
+	fi
+
+
+	if [ -z "$SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI" ]
+	then
+		echo "publish_deploy_link_on_pr_feed: Missing required environment variables, see publish_deploy_link_on_pr_feed." >&2
+		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_ENV_VARS
+	fi
+
+	local commit_short=$(echo $commit_id | egrep -o '^[0-9a-f]{8}')
+	local preview_url="http://$(kubectl -n $namespace get ingress -l release=$release_name -ojson | \
+		jq -r '.items[].spec.rules[].host')/"
+
+	local comment_text="Foi publicado uma prévia da aplicação no endereço [$preview_url]($preview_url). \
+A versão publicada corresponde ao commit \
+[$commit_short]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$commit_id) \
+e ela estará disponível enquanto este *Pull Request* estiver aberto."
+	local comment_id=$(vsts-comment-pull-request $pullrequest_id "$comment_text")
+	vsts-pull-request-comment-change-status $pullrequest_id $comment_id 4 # 4 = closed
 }
 
-TAG_AND_COMMIT_CHANGES_MISS_TAG=21
-TAG_AND_COMMIT_CHANGES_PUSH_ERROR=22
+DEPLOY_MAIN_MISS_NAMESPACE=1
+DEPLOY_MAIN_MISS_CONFIGURATION=2
+DEPLOY_MAIN_MISS_DEPLOY_FAILED=3
+DEPLOY_MAIN_MISS_REQUIRED_ENV_VARS=4
+DEPLOY_MAIN_MISS_REQUIRED_PR_ENV_VARS=5
 
-# Param tag
-# Required environmento variables:
-# - BUILD_SOURCEBRANCHNAME
-# - BUILD_SOURCEVERSION
-function commit-changes-and-tag
+# Param namespace
+# Param configuration
+# Required environment variables:
+#   - BUILD_REASON
+#   - SYSTEM_PULLREQUEST_SOURCECOMMITID
+#   - BUILD_BUILDID
+#   - BUILD_SOURCESDIRECTORY
+function main
 {
-	tag=$1
+	local namespace=$1
+	local configuration=$2
 
-	if [ -z "$tag" ]
+	if [ -z "$BUILD_REASON" ] || \
+		[ -z "$SYSTEM_PULLREQUEST_SOURCECOMMITID" ] || \
+		[ -z "$BUILD_BUILDID" ] || \
+		[ -z "$BUILD_SOURCESDIRECTORY" ]
 	then
-		echo "commit-changes-and-tag: missing tag" >&2
-		return $TAG_AND_COMMIT_CHANGES_MISS_TAG
+		echo "Missing required environment variables, look at script source to see details." >&2
+		return $DEPLOY_MAIN_MISS_REQUIRED_ENV_VARS
 	fi
 
-	echo "Comminting changes to remote repository ..."
+	local is_pullrequest=false
+	local pullrequest_id=''
 
-	git status
-	git commit -m "Build $tag [skip ci]"
-	git tag "$tag"
-
-	if ! git push -u authrepo $BUILD_SOURCEBRANCHNAME --tags > gitpush.log 2>&1 # prevent expose creedential
+	if [ "$BUILD_REASON" = "PullRequest" ]
 	then
-		echo "commit-changes-and-tag: git push error." >&2
-		return $TAG_AND_COMMIT_CHANGES_PUSH_ERROR
+		if [ -z "$SYSTEM_PULLREQUEST_PULLREQUESTID" ]
+		then
+			echo "Missing required PR environment variables, look at script source to see details." >&2
+			return $DEPLOY_MAIN_MISS_REQUIRED_PR_ENV_VARS
+		fi
+
+		is_pullrequest=true
+		pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 	fi
 
-	git remote rm authrepo > /dev/null 2>&1
-	git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1	
-}
+	if [ -z "$namespace" ]
+	then
+		echo "Missing namespace" >&2
+		return $DEPLOY_MAIN_MISS_NAMESPACE
+	fi
 
-artifact_suffix=''
+	if [ -z "$configuration" ]
+	then
+		echo "Missing configuration" >&2
+		return $DEPLOY_MAIN_MISS_CONFIGURATION
+	fi
 
-if $is_pullrequest
-then
-	artifact_suffix="-eph-pr$pullrequest_id"
-	tag="$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | \
-		egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
-else
-	tag="v$BUILD_BUILDID"
-	prepare-local-repo-for-changes
-fi
+	local artifact_suffix=''
+	local tag=''
 
-solution_dir="$BUILD_SOURCESDIRECTORY/Source"
-deployed_releases_list=$(mktemp --suffix="dep-rel-$BUILD_BUILDID")
-
-if deploy "$solution_dir" "$configuration" "$tag" "$namespace" "$artifact_suffix" "$deployed_releases_list"
-then
 	if $is_pullrequest
 	then
-		for release_name in $(cat "$deployed_releases_list")
-		do		
-			commit_short=$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')
-			preview_url="http://$(kubectl -n $namespace get ingress -l release=$release_name -ojson | \
-				jq -r '.items[].spec.rules[].host')/"
-
-			comment_text="Foi publicado uma prévia da aplicação no endereço [$preview_url]($preview_url). \
-A versão publicada corresponde ao commit \
-[$commit_short]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID) \
-e ela estará disponível enquanto este *Pull Request* estiver aberto."
-    		comment_id=$(vsts-comment-pull-request $pullrequest_id "$comment_text")
-    		vsts-pull-request-comment-change-status $pullrequest_id $comment_id 4 # 4 = closed
-		done
-
-		rm "$deployed_releases_list"
+		artifact_suffix="-eph-pr$pullrequest_id"
+		tag="$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | \
+			egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
 	else
-		commit-changes-and-tag "$tag"
+		tag="v$BUILD_BUILDID"
+		prepare-local-repo-for-changes
 	fi
-else
-	exit 11
-fi
 
+	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
+	local deployed_releases_list=$(mktemp --suffix="dep-rel-$BUILD_BUILDID")
+
+	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" "$artifact_suffix" "$deployed_releases_list"
+	then
+		if $is_pullrequest
+		then
+			for release_name in $(cat "$deployed_releases_list")
+			do		
+				publish_deploy_link_on_pr_feed $pullrequest_id \
+					$SYSTEM_PULLREQUEST_SOURCECOMMITID \
+					$namespace \
+					$release_name
+			done
+
+			rm "$deployed_releases_list"
+		else
+			commit-changes-and-tag "$tag"
+		fi
+	else
+		return $DEPLOY_MAIN_MISS_DEPLOY_FAILED
+	fi
+}
+
+main $@
