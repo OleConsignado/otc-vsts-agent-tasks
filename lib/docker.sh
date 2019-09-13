@@ -20,7 +20,6 @@ function docker-build
 	if [ -z "$image_full_name_and_tag" ]
 	then
 		echo "Missing image_full_name_and_tag." >&2
-
 		return $DOCKER_BUILD_MISSING_IMAGE_TAG
 	fi
 
@@ -41,7 +40,6 @@ function docker-push
 	if [ -z "$image_full_name_and_tag" ]
 	then
 		echo "Missing image_full_name_and_tag." >&2
-
 		return $DOCKER_PUSH_MISSING_IMAGE_TAG
 	fi	
 

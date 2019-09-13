@@ -83,7 +83,6 @@ function commit-changes-and-tag
 	if [ -z "$tag" ]
 	then
 		echo "commit-changes-and-tag: missing tag" >&2
-
 		return $TAG_AND_COMMIT_CHANGES_MISS_TAG
 	fi
 
@@ -96,7 +95,6 @@ function commit-changes-and-tag
 	if ! git push -u authrepo $BUILD_SOURCEBRANCHNAME --tags > gitpush.log 2>&1 # prevent expose creedential
 	then
 		echo "commit-changes-and-tag: git push error." >&2
-		
 		return $TAG_AND_COMMIT_CHANGES_PUSH_ERROR
 	fi
 

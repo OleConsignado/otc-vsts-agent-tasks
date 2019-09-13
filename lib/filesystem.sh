@@ -12,16 +12,13 @@ function directory-exists
 	if [ -z "$dir" ]
 	then
 		echo "Empty path string." >&2
-
 		return $DIRECTORY_EXISTS_EMPTY_PATH_STRING
 	fi
 
 	if ! [ -d "$dir" ]
 	then
 		echo "'$dir' directory not found." >&2
-
 		return $DIRECTORY_EXISTS_DIR_NOT_FOUND
 	fi
-
 	return 0
 }

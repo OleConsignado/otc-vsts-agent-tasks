@@ -29,7 +29,6 @@ function deploy
 	if [ -z "$ORGANIZATION" ]
 	then
 		echo "Missing environment variable ORGANIZATION." >&2
-
 		return $DEPLOY_MISSING_ORGANIZATION
 	fi
 
@@ -38,14 +37,12 @@ function deploy
 	if [ -z "$dotnet_configuration" ]
 	then
 		echo "Missing dotnet_configuration." >&2
-
 		return $DEPLOY_MISSING_DOTNET_CONFIGURATION
 	fi
 
 	if [ -z "$tag" ]
 	then
 		echo "Missing tag." >&2
-
 		return $DEPLOY_MISSING_TAG
 	fi
 
@@ -54,7 +51,6 @@ function deploy
 	if [ -z "$namespace" ]
 	then
 		echo "Missing namespace." >&2
-
 		return $DEPLOY_MISSING_NAMESPACE
 	fi
 

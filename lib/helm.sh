@@ -22,7 +22,6 @@ function discover-chart-name
 	if [ -z "$chart_name" ]
 	then
 		echo "Could not find the chartname, check file '$chart_yaml_filename'." >&2
-		
 		return $DISCOVER_CHART_NAME_ERROR
 	fi
 
@@ -48,7 +47,6 @@ function edit-helm-tag
 	if [ -z "$tag" ]
 	then
 		echo "Missing tag." >&2
-
 		return $EDIT_HELM_TAG_MISS_TAG
 	fi
 
@@ -57,7 +55,6 @@ function edit-helm-tag
 	if ! [ -f "$values_path" ]
 	then
 		echo "File '$values_path' not found." >&2
-
 		return $EDIT_HELM_TAG_VALUES_NOT_FOUND
 	fi
 
@@ -86,7 +83,6 @@ function helm-dry-run
 		echo "FAILED!"
 		echo "helm dry-run failed, performing helm dry-run with --debug in order to expose errors." >&2
 		! helm install "$helm_dir" --dry-run --debug
-		
 		return $HELM_DRY_RUN_FAILED
 	fi
 
@@ -110,14 +106,12 @@ function helm-release-exists
 	if [ -z "$namespace" ]
 	then
 		echo "Missing namespace." >&2
-
 		return $HELM_RELEASE_EXISTS_MISS_NAMESPACE
 	fi
 
 	if [ -z "$helm_release_name" ]
 	then
 		echo "Missing helm_release_name." >&2
-
 		return $HELM_RELEASE_EXISTS_MISS_REL_NAME
 	fi
 
@@ -154,14 +148,12 @@ function helm-install-or-upgrade
 	if [ -z "$namespace" ]
 	then
 		echo "Missing namespace." >&2
-
 		return $HELM_INSTALL_OR_UPGRADE_MISS_NAMESPACE
 	fi
 
 	if [ -z "$helm_release_name" ]
 	then
 		echo "Missing helm_release_name." >&2
-
 		return $HELM_INSTALL_OR_UPGRADE_MISS_REL_NAME
 	fi	
 
@@ -172,7 +164,6 @@ function helm-install-or-upgrade
 		if ! echo "$item" | egrep '^[a-zA-Z_0-9-]+=[a-zA-Z_0-9-]+$' > /dev/null
 		then
 			echo "Argument '$item' is invalid for helm_custom_values" >&2
-
 			return $HELM_INSTALL_OR_UPGRADE_INVALID_CUSTOM_VALUE
 		fi
 		helm_set_arg="$helm_set_arg --set $item"
@@ -197,7 +188,6 @@ function helm-install-or-upgrade
 			
 			# Delete release only if is a new release
 			helm delete "$helm_release_name" --purge
-
 			return $HELM_INSTALL_OR_UPGRADE_INST_FAILED
 		fi		
 	fi
@@ -222,14 +212,12 @@ function helm-deploy-validation
 	if [ -z "$namespace" ]
 	then
 		echo "Missing namespace." >&2
-
 		return $HELM_DEPLOY_VALIDATION_MISS_NAMESPACE
 	fi
 
 	if [ -z "$helm_release_name" ]
 	then
 		echo "Missing helm_release_name." >&2
-
 		return $HELM_DEPLOY_VALIDATION_MISS_REL_NAME
 	fi
 
@@ -238,7 +226,6 @@ function helm-deploy-validation
 	if ! echo $release_revision | egrep '^[1-9][0-9]*$' > /dev/null 2>&1
 	then
 		echo "Could not get helm release revision." >&2
-
 		return $HELM_DEPLOY_VALIDATION_REVISION_NOT_FOUND
 	fi	
 
@@ -255,7 +242,6 @@ function helm-deploy-validation
 		then
 			echo "FAILED"
 			echo "Could not validate POD creation." >&2
-			
 			return $HELM_DEPLOY_VALIDATION_POD_CREATION_FAIL
 		fi
 
@@ -371,7 +357,6 @@ function helm-deploy-validation
 		fi
 
 		helm delete $helm_release_name --purge
-		
 		return $HELM_DEPLOY_VALIDATION_POD_DIDNT_RUN
 	fi
 

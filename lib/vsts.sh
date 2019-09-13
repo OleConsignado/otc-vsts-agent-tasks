@@ -18,14 +18,12 @@ function vsts-request
 		[ -z "$VCS_TOKEN" ]
 	then
 		echo "Required environment variables (SYSTEM_COLLECTIONURI and/or VCS_TOKEN) are missing, check vsts.sh." >&2
-
 		return $VSTS_POST_JSON_MISS_REQUIRED_ENV
 	fi
 
 	if [ -z "$path" ]
 	then
 		echo "vsts-request: path is missing." >&2
-
 		return $VSTS_POST_JSON_MISS_PATH
 	fi
 
@@ -44,7 +42,6 @@ function vsts-get-pullrequest
 	if [ -z "$pullrequest_id" ]
 	then
 		echo "vsts-get-pullrequest: missing pullrequest_id" >&2
-
 		return $VSTS_GET_PR_MISS_PR_ID
 	fi
 
@@ -62,7 +59,6 @@ function vsts-get-repoid-by-prid
 	if [ -z "$pullrequest_id" ]
 	then
 		echo "vsts-get-repoid-by-prid: missing pullrequest_id" >&2
-
 		return $VSTS_GET_REPOID_BY_PRID_MISS_PR_ID
 	fi
 
@@ -71,7 +67,6 @@ function vsts-get-repoid-by-prid
 	if [ "$repository_id" = "null" ]
 	then
 		echo "Could not found 'repository_id' for 'pullrequest_id' = '$pullrequest_id'." >&2
-
 		return $VSTS_GET_REPOID_BY_PRID_PR_NOT_FOUND
 	fi
 
@@ -96,14 +91,12 @@ function vsts-comment-pull-request
 	if [ -z "$pullrequest_id" ]
 	then
 		echo "vsts-comment-pull-request: missing pullrequest_id" >&2
-
 		return $VSTS_COMMENT_PR_MISS_PR_ID
 	fi
 
 	if [ -z "$comment_text" ]
 	then
 		echo "vsts-comment-pull-request: missing comment_text" >&2
-
 		return $VSTS_COMMENT_PR_MISS_COMMENT_TEXT
 	fi
  
@@ -134,21 +127,18 @@ function vsts-pull-request-comment-change-status
 	if [ -z "$pullrequest_id" ]
 	then
 		echo "vsts-pull-request-comment-change-status: missing pullrequest_id" >&2
-
 		return $VSTS_PR_COMMENT_CHANGE_STATUS_MISS_PR_ID
 	fi
 
 	if [ -z "$comment_id" ]
 	then
 		echo "vsts-pull-request-comment-change-status: missing comment_id" >&2
-
 		return $VSTS_PR_COMMENT_CHANGE_STATUS_MISS_COMMENT_ID
 	fi
 
 	if [ -z "$comment_status" ]
 	then
 		echo "vsts-pull-request-comment-change-status: missing comment_status" >&2
-
 		return $VSTS_PR_COMMENT_CHANGE_STATUS_MISS_COMMENT_STATUS
 	fi	
 

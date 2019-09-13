@@ -22,7 +22,6 @@ function dotnet-publish
 	if [ -z "$configuration" ]
 	then
 		echo "Missing configuration." >&2
-
 		return $DOTNET_PUBLISH_MISSING_CONFIG
 	fi
 
