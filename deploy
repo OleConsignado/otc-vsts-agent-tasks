@@ -94,7 +94,7 @@ function main
 	local namespace=$1
 	local configuration=$2
 
-	if [ -z "$BUILD_REASON" ] || \
+	if [ -z "$BUILD_REASON" ] ||   \
 		[ -z "$BUILD_BUILDID" ] || \
 		[ -z "$BUILD_SOURCESDIRECTORY" ]
 	then
