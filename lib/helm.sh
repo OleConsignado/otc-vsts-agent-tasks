@@ -1,6 +1,6 @@
-#--------------------------
-# Depends on filesystem.sh
-#--------------------------
+#------------------------------------
+# Depends on filesystem.sh; assert.sh
+#------------------------------------
 
 # discover-chart-name 
 # Get chart name for the given helm chart directory.
@@ -13,18 +13,14 @@ DISCOVER_CHART_NAME_ERROR=5
 function discover-chart-name 
 {
 	local helm_dir=$1
-
 	directory-exists "$helm_dir" || return $DISCOVER_DISCOVER_CHART_NAME_ERROR_HELM_DIR
-
 	local chart_yaml_filename="$helm_dir/Chart.yaml"
 	local chart_name=$(egrep '^name: ' "$chart_yaml_filename" | awk '{ print $2 }')	
-	
 	if [ -z "$chart_name" ]
 	then
-		echo "Could not find the chartname, check file '$chart_yaml_filename'." >&2
+		echo "discover-chart-name : Could not find the chartname, check file '$chart_yaml_filename'." >&2
 		return $DISCOVER_CHART_NAME_ERROR
 	fi
-
 	echo $chart_name
 }
 
@@ -32,34 +28,23 @@ function discover-chart-name
 # Usage: edit-helm-tag helm_dir new_tag
 
 EDIT_HELM_TAG_HELM_DIR_NOT_FOUND=88
-EDIT_HELM_TAG_MISS_TAG=87
 EDIT_HELM_TAG_VALUES_NOT_FOUND=89
 
 # Param helm_dir
 # Param tag
 function edit-helm-tag
 {
-	helm_dir=$1
-	tag=$2
-
+	local helm_dir=$1
+	local tag=$2
 	directory-exists "$helm_dir" || return $EDIT_HELM_TAG_HELM_DIR_NOT_FOUND
-
-	if [ -z "$tag" ]
-	then
-		echo "Missing tag." >&2
-		return $EDIT_HELM_TAG_MISS_TAG
-	fi
-
-	values_path="$helm_dir/values.yaml"
-
+	assert-not-empty tag
+	local values_path="$helm_dir/values.yaml"
 	if ! [ -f "$values_path" ]
 	then
-		echo "File '$values_path' not found." >&2
+		echo "edit-helm-tag: File '$values_path' not found." >&2
 		return $EDIT_HELM_TAG_VALUES_NOT_FOUND
 	fi
-
 	sed -ri "s/^  tag: .*/  tag: $tag/" "$values_path"
-
 	git add "$values_path"
 }
 
@@ -72,28 +57,22 @@ HELM_DRY_RUN_HELM_DIR_NOT_FOUND=46
 # Param helm_dir
 function helm-dry-run
 {
-	helm_dir="$1"
-
+	local helm_dir="$1"
 	directory-exists "$helm_dir" || return $HELM_DRY_RUN_HELM_DIR_NOT_FOUND
-
 	echo -n "Performing helm dry-run... "
-
 	if ! helm install "$helm_dir" --dry-run > /dev/null 2>&1
 	then
 		echo "FAILED!"
-		echo "helm dry-run failed, performing helm dry-run with --debug in order to expose errors." >&2
+		echo "helm-dry-run: helm dry-run failed, performing helm dry-run with --debug in order to expose errors." >&2
 		! helm install "$helm_dir" --dry-run --debug
 		return $HELM_DRY_RUN_FAILED
 	fi
-
 	echo "Passed!"
 }
 
 # helm-release-exists
 # Usage: helm-release-exists namespace helm_release_name
 
-HELM_RELEASE_EXISTS_MISS_REL_NAME=58
-HELM_RELEASE_EXISTS_MISS_NAMESPACE=59
 HELM_RELEASE_EXISTS_NOT_EXISTS=60
 
 # Param namespace
@@ -102,19 +81,8 @@ function helm-release-exists
 {
 	local namespace=$1
 	local helm_release_name=$2
-
-	if [ -z "$namespace" ]
-	then
-		echo "Missing namespace." >&2
-		return $HELM_RELEASE_EXISTS_MISS_NAMESPACE
-	fi
-
-	if [ -z "$helm_release_name" ]
-	then
-		echo "Missing helm_release_name." >&2
-		return $HELM_RELEASE_EXISTS_MISS_REL_NAME
-	fi
-
+	assert-not-empty namespace
+	assert-not-empty helm_release_name
 	if ! helm --namespace="$namespace" ls -q | egrep "^$helm_release_name\$" > /dev/null
 	then
 		return $HELM_RELEASE_EXISTS_NOT_EXISTS
@@ -125,8 +93,6 @@ function helm-release-exists
 # Usage: helm-install-or-upgrade helm_dir namespace helm_release_name item1=va1 item2=val2 ....
 
 HELM_INSTALL_OR_UPGRADE_INVALID_CUSTOM_VALUE=55
-HELM_INSTALL_OR_UPGRADE_MISS_NAMESPACE=56
-HELM_INSTALL_OR_UPGRADE_MISS_REL_NAME=57
 HELM_INSTALL_OR_UPGRADE_INST_FAILED=58
 HELM_INSTALL_OR_UPGRADE_HELM_DIR_NOT_FOUND=59
 HELM_INSTALL_OR_UPGRADE_UPGR_FAILED=60
@@ -142,28 +108,15 @@ function helm-install-or-upgrade
 	local helm_release_name=$3
 	shift 3
 	local helm_custom_values=$@
-
 	directory-exists "$helm_dir" || return $HELM_INSTALL_OR_UPGRADE_HELM_DIR_NOT_FOUND
-
-	if [ -z "$namespace" ]
-	then
-		echo "Missing namespace." >&2
-		return $HELM_INSTALL_OR_UPGRADE_MISS_NAMESPACE
-	fi
-
-	if [ -z "$helm_release_name" ]
-	then
-		echo "Missing helm_release_name." >&2
-		return $HELM_INSTALL_OR_UPGRADE_MISS_REL_NAME
-	fi	
-
+	assert-not-empty namespace
+	assert-not-empty helm_release_name
 	local helm_set_arg=''
-
 	for item in $helm_custom_values
 	do 
 		if ! echo "$item" | egrep '^[a-zA-Z_0-9-]+=[a-zA-Z_0-9-]+$' > /dev/null
 		then
-			echo "Argument '$item' is invalid for helm_custom_values" >&2
+			echo "helm-install-or-upgrade: Argument '$item' is invalid for helm_custom_values" >&2
 			return $HELM_INSTALL_OR_UPGRADE_INVALID_CUSTOM_VALUE
 		fi
 		helm_set_arg="$helm_set_arg --set $item"
@@ -175,8 +128,7 @@ function helm-install-or-upgrade
 	    echo "Upgrading helm $helm_release_name ..."
 	    if ! helm --namespace="$namespace" upgrade "$helm_release_name" $helm_set_arg "$helm_dir"
 	    then
-	    	echo "helm upgrade failed." >&2
-
+	    	echo "helm-install-or-upgrade: helm upgrade failed." >&2
 	    	return $HELM_INSTALL_OR_UPGRADE_UPGR_FAILED
 	    fi
 	else
@@ -184,8 +136,7 @@ function helm-install-or-upgrade
 		echo "Installing helm $helm_release_name ..."
 		if ! helm --namespace="$namespace" install --name="$helm_release_name" $helm_set_arg "$helm_dir"
 		then
-			echo "helm install failed." >&2
-			
+			echo "helm-install-or-upgrade: helm install failed." >&2
 			# Delete release only if is a new release
 			helm delete "$helm_release_name" --purge
 			return $HELM_INSTALL_OR_UPGRADE_INST_FAILED
@@ -196,11 +147,9 @@ function helm-install-or-upgrade
 # helm-deploy-validation
 # Usage: helm-deploy-validation namespace helm_release_name
 
-HELM_DEPLOY_VALIDATION_MISS_NAMESPACE=77
-HELM_DEPLOY_VALIDATION_MISS_REL_NAME=78
 HELM_DEPLOY_VALIDATION_REVISION_NOT_FOUND=79
 HELM_DEPLOY_VALIDATION_POD_CREATION_FAIL=80
-HELM_DEPLOY_VALIDATION_POD_DIDNT_RUN=81
+HELM_DEPLOY_VALIDATION_POD_START_FAIL=81
 
 # Param namespace
 # Param helm_release_name
@@ -208,18 +157,8 @@ function helm-deploy-validation
 {
 	local namespace=$1
 	local helm_release_name=$2
-
-	if [ -z "$namespace" ]
-	then
-		echo "Missing namespace." >&2
-		return $HELM_DEPLOY_VALIDATION_MISS_NAMESPACE
-	fi
-
-	if [ -z "$helm_release_name" ]
-	then
-		echo "Missing helm_release_name." >&2
-		return $HELM_DEPLOY_VALIDATION_MISS_REL_NAME
-	fi
+	assert-not-empty namespace
+	assert-not-empty helm_release_name
 
 	local release_revision=$(helm get "$helm_release_name" | head -1 | grep ^REVISION: | awk '{ print $2 }')
 
@@ -357,7 +296,7 @@ function helm-deploy-validation
 		fi
 
 		helm delete $helm_release_name --purge
-		return $HELM_DEPLOY_VALIDATION_POD_DIDNT_RUN
+		return $HELM_DEPLOY_VALIDATION_POD_START_FAIL
 	fi
 
 	echo

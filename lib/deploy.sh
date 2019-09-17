@@ -1,12 +1,8 @@
-#---------------------------------------------------------
-# Depends on filesystem.sh; dotnet.sh; docker.sh; helm.sh
-#---------------------------------------------------------
+#-------------------------------------------------------------------
+# Depends on filesystem.sh; dotnet.sh; docker.sh; helm.sh; assert.sh
+#-------------------------------------------------------------------
 
-DEPLOY_MISSING_DOTNET_CONFIGURATION=8
 DEPLOY_SOLUTION_DIR_NOT_FOUND=9
-DEPLOY_MISSING_TAG=10
-DEPLOY_MISSING_ORGANIZATION=11
-DEPLOY_MISSING_NAMESPACE=13
 
 # Param solution_dir
 # Param dotnet_configuration
@@ -26,33 +22,13 @@ function deploy
 	local artifacts_suffix=$5
 	local deployed_releases_output=$6
 
-	if [ -z "$ORGANIZATION" ]
-	then
-		echo "Missing environment variable ORGANIZATION." >&2
-		return $DEPLOY_MISSING_ORGANIZATION
-	fi
-
+	assert-not-empty ORGANIZATION
 	directory-exists "$solution_dir" || return $DEPLOY_SOLUTION_DIR_NOT_FOUND
-
-	if [ -z "$dotnet_configuration" ]
-	then
-		echo "Missing dotnet_configuration." >&2
-		return $DEPLOY_MISSING_DOTNET_CONFIGURATION
-	fi
-
-	if [ -z "$tag" ]
-	then
-		echo "Missing tag." >&2
-		return $DEPLOY_MISSING_TAG
-	fi
+	assert-not-empty dotnet_configuration
+	assert-not-empty tag
+	assert-not-empty namespace
 
 	tag="${tag}${artifacts_suffix}"	
-
-	if [ -z "$namespace" ]
-	then
-		echo "Missing namespace." >&2
-		return $DEPLOY_MISSING_NAMESPACE
-	fi
 
 	local output_releases_to_file=false
 

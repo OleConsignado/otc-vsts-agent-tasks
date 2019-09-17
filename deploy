@@ -9,14 +9,9 @@ source <(otc-task-include lib/docker.sh)
 source <(otc-task-include lib/helm.sh)
 source <(otc-task-include lib/deploy.sh)
 source <(otc-task-include lib/git.sh)
+source <(otc-task-include lib/assert.sh)
 
 ORGANIZATION="oleconsignado"
-
-PUBLISH_DEPLOY_LINK_PR_FEED_MISS_ENV_VARS=9
-PUBLISH_DEPLOY_LINK_PR_FEED_MISS_NAMESPACE=10
-PUBLISH_DEPLOY_LINK_PR_FEED_MISS_RELEASE_NAME=11
-PUBLISH_DEPLOY_LINK_PR_FEED_MISS_COMMIT_ID=12
-PUBLISH_DEPLOY_LINK_PR_FEED_MISS_PR_ID=13
 
 # Param pullrequest_id
 # Param commit_id
@@ -31,36 +26,11 @@ function publish_deploy_link_on_pr_feed
 	local namespace=$3
 	local release_name=$4
 
-	if [ -z "$pullrequest_id" ]
-	then
-		echo "publish_deploy_link_on_pr_feed: Missing pullrequest_id" >&2
-		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_PR_ID
-	fi
-
-	if [ -z "$commit_id" ]
-	then
-		echo "publish_deploy_link_on_pr_feed: Missing commit_id" >&2
-		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_COMMIT_ID
-	fi
-
-	if [ -z "$namespace" ]
-	then
-		echo "publish_deploy_link_on_pr_feed: Missing namespace" >&2
-		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_NAMESPACE
-	fi
-
-	if [ -z "$release_name" ]
-	then
-		echo "publish_deploy_link_on_pr_feed: Missing release_name" >&2
-		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_RELEASE_NAME
-	fi
-
-
-	if [ -z "$SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI" ]
-	then
-		echo "publish_deploy_link_on_pr_feed: Missing required environment variables, see publish_deploy_link_on_pr_feed." >&2
-		return $PUBLISH_DEPLOY_LINK_PR_FEED_MISS_ENV_VARS
-	fi
+	assert-not-empty pullrequest_id
+	assert-not-empty commit_id
+	assert-not-empty namespace
+	assert-not-empty release_name
+	assert-not-empty SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI
 
 	local commit_short=$(echo $commit_id | egrep -o '^[0-9a-f]{8}')
 	local preview_url="http://$(kubectl -n $namespace get ingress -l release=$release_name -ojson | \
@@ -74,11 +44,7 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
 	vsts-pull-request-comment-change-status $pullrequest_id $comment_id 4 # 4 = closed
 }
 
-DEPLOY_MAIN_MISS_NAMESPACE=1
-DEPLOY_MAIN_MISS_CONFIGURATION=2
 DEPLOY_MAIN_MISS_DEPLOY_FAILED=3
-DEPLOY_MAIN_MISS_REQUIRED_ENV_VARS=4
-DEPLOY_MAIN_MISS_REQUIRED_PR_ENV_VARS=5
 
 # Param namespace
 # Param configuration
@@ -94,40 +60,21 @@ function main
 	local namespace=$1
 	local configuration=$2
 
-	if [ -z "$BUILD_REASON" ] ||   \
-		[ -z "$BUILD_BUILDID" ] || \
-		[ -z "$BUILD_SOURCESDIRECTORY" ]
-	then
-		echo "Missing required environment variables, look at script source to see details." >&2
-		return $DEPLOY_MAIN_MISS_REQUIRED_ENV_VARS
-	fi
+	assert-not-empty namespace
+	assert-not-empty configuration
+	assert-not-empty BUILD_REASON
+	assert-not-empty BUILD_BUILDID
+	assert-not-empty BUILD_SOURCESDIRECTORY
 
 	local is_pullrequest=false
 	local pullrequest_id=''
 
 	if [ "$BUILD_REASON" = "PullRequest" ]
 	then
-		if [ -z "$SYSTEM_PULLREQUEST_SOURCECOMMITID" ] || \
-			[ -z "$SYSTEM_PULLREQUEST_PULLREQUESTID" ]
-		then
-			echo "Missing required PR environment variables, look at script source to see details." >&2
-			return $DEPLOY_MAIN_MISS_REQUIRED_PR_ENV_VARS
-		fi
-
+		assert-not-empty SYSTEM_PULLREQUEST_SOURCECOMMITID
+		assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 		is_pullrequest=true
 		pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	fi
-
-	if [ -z "$namespace" ]
-	then
-		echo "Missing namespace" >&2
-		return $DEPLOY_MAIN_MISS_NAMESPACE
-	fi
-
-	if [ -z "$configuration" ]
-	then
-		echo "Missing configuration" >&2
-		return $DEPLOY_MAIN_MISS_CONFIGURATION
 	fi
 
 	local artifact_suffix=''
