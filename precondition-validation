@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source <(otc-task-include lib/git.sh)
+source <(otc-task-include lib/assert.sh)
+
+git diff --numstat master
