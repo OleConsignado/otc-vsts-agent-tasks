@@ -2,5 +2,28 @@
 
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
+source <(otc-task-include lib/vsts.sh)
 
-git diff --numstat master
+# Param lines_threshold
+# Param lines_include_pattern (optional)
+# Param lines_exclude_pattern (optional)
+# Required environment variables:
+#  - SYSTEM_PULLREQUEST_TARGETBRANCH
+function main
+{
+	local lines_threshold=$1
+	local lines_include_pattern=$2
+	local lines_exclude_pattern=$3
+	assert-not-empty lines_threshold
+	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
+	lines_changed=$(count-lines-changed "$SYSTEM_PULLREQUEST_TARGETBRANCH" \
+		"$lines_include_pattern" "$lines_exclude_pattern")
+	if [ "$lines_changed" -gt "$lines_threshold" ]
+	then
+		vsts-comment-pull-request \
+			"$SYSTEM_PULLREQUEST_PULLREQUESTID" "Precondition failed: $lines_changed > $lines_threshold" \
+			> /dev/null
+	fi
+}
+
+main $@

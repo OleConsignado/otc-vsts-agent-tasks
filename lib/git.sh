@@ -60,3 +60,36 @@ function commit-changes-and-tag
 	git remote rm authrepo > /dev/null 2>&1
 	git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1	
 }
+
+# Param base_branch
+# Param include_pattern (optional)
+# Param exclude_pattern (optional)
+# Return lines count
+function count-lines-changed 
+{
+	local base_branch="$1"
+	local include_pattern="$2"
+	local exclude_pattern="$3"
+	assert-not-empty base_branch
+	
+	if [ -z "$include_pattern" ]
+	then
+		include_pattern=".*"
+	fi
+
+	if [ -z "$exclude_pattern" ]
+	then
+		exclude_pattern="I hope there is no file named like this."
+	fi
+
+	# 'git diff --numstat' output is like '10   1   Path/To/File'
+	# replace leading '^'' with '^[0-9] +[0-9]' in order to make
+	# include/exclude pattern match only the 'Path/To/File' part.
+	include_pattern=$(echo $include_pattern | sed 's/^\^/^[0-9] +[0-9] +/')
+	exclude_pattern=$(echo $exclude_pattern | sed 's/^\^/^[0-9] +[0-9] +/')
+
+	git diff --numstat $base_branch | \
+		egrep "$include_pattern" | \
+		egrep -v "$exclude_pattern" | \
+		awk '{n += $1+$2}; END{print n}
+}
