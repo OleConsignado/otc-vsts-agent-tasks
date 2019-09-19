@@ -65,7 +65,7 @@ function commit-changes-and-tag
 # Param include_pattern (optional)
 # Param exclude_pattern (optional)
 # Return lines count
-function count-lines-changed 
+function count-changed-lines
 {
 	local base_branch="$1"
 	local include_pattern="$2"
@@ -91,5 +91,5 @@ function count-lines-changed
 	git diff --numstat $base_branch | \
 		egrep "$include_pattern" | \
 		egrep -v "$exclude_pattern" | \
-		awk '{n += $1+$2}; END{print n}
+		awk '{n += $1+$2}; END{print n}'
 }

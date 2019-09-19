@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
@@ -16,7 +18,7 @@ function main
 	local lines_exclude_pattern=$3
 	assert-not-empty lines_threshold
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
-	lines_changed=$(count-lines-changed "$SYSTEM_PULLREQUEST_TARGETBRANCH" \
+	local lines_changed=$(count-changed-lines "$SYSTEM_PULLREQUEST_TARGETBRANCH" \
 		"$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
