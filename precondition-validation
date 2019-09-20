@@ -18,8 +18,11 @@ function main
 	local lines_exclude_pattern=$3
 	assert-not-empty lines_threshold
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
-	local lines_changed=$(count-changed-lines "$SYSTEM_PULLREQUEST_TARGETBRANCH" \
-		"$SYSTEM_PULLREQUEST_PULLREQUESTID" "$lines_include_pattern" "$lines_exclude_pattern")
+	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
+	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
+	local target_branch=$(echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/head\///')
+	local lines_changed=$(count-changed-lines "$target_branch" \
+		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
 		vsts-comment-pull-request \

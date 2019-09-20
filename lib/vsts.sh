@@ -84,3 +84,17 @@ function vsts-pull-request-comment-change-status
 		"/_apis/git/repositories/$repository_id/pullrequests/$pullrequest_id/threads/$comment_id?api-version=5.1" \
 		"{ \"status\": $comment_status }" > /dev/null
 }
+
+# Param pullrequest_id
+function vsts-pr-set-status
+{
+	local pullrequest_id="$1"
+	local context_genre="$2"
+	local context_name="$3"
+	local state="$4"
+	assert-not-empty pullrequest_id
+	assert-not-empty context_genre
+	assert-not-empty context_name
+	assert-not-empty state
+	local repository_id=$(vsts-get-repoid-by-prid "$pullrequest_id")
+}

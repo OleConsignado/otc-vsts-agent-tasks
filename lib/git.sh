@@ -93,9 +93,14 @@ function count-changed-lines
 
 	git checkout $base_branch
 	git checkout pull/$pullrequest_id/merge
-
+	local git_diff_result_file=$(mktemp -t "pr-diff-${pullrequest_id}-XXXXXXXX")
 	git diff --numstat $base_branch | \
 		egrep "$include_pattern" | \
-		egrep -v "$exclude_pattern" | \
-		awk '{n += $1+$2}; END{print n}'
+		egrep -v "$exclude_pattern" > "$git_diff_result_file"
+	echo "Counting lines ..." >&2
+	cat "$git_diff_result_file" >&2
+	local total_lines=$(cat "$git_diff_result_file" | awk '{n += $1+$2}; END{print n}')
+	rm -f "$git_diff_result_file"
+	echo "Total: $total_lines" >&2
+	echo $total_lines
 }
