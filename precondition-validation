@@ -19,7 +19,7 @@ function main
 	assert-not-empty lines_threshold
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
 	local lines_changed=$(count-changed-lines "$SYSTEM_PULLREQUEST_TARGETBRANCH" \
-		"$lines_include_pattern" "$lines_exclude_pattern")
+		"$SYSTEM_PULLREQUEST_PULLREQUESTID" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
 		vsts-comment-pull-request \

@@ -62,15 +62,18 @@ function commit-changes-and-tag
 }
 
 # Param base_branch
+# Param pullrequest_id
 # Param include_pattern (optional)
 # Param exclude_pattern (optional)
 # Return lines count
 function count-changed-lines
 {
 	local base_branch="$1"
-	local include_pattern="$2"
-	local exclude_pattern="$3"
+	local pullrequest_id="$2"
+	local include_pattern="$3"
+	local exclude_pattern="$4"
 	assert-not-empty base_branch
+	assert-not-empty pullrequest_id
 	
 	if [ -z "$include_pattern" ]
 	then
@@ -87,6 +90,9 @@ function count-changed-lines
 	# include/exclude pattern match only the 'Path/To/File' part.
 	include_pattern=$(echo $include_pattern | sed 's/^\^/^[0-9] +[0-9] +/')
 	exclude_pattern=$(echo $exclude_pattern | sed 's/^\^/^[0-9] +[0-9] +/')
+
+	git checkout $base_branch
+	git checkout pull/$pullrequest_id/merge
 
 	git diff --numstat $base_branch | \
 		egrep "$include_pattern" | \
