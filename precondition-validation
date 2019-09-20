@@ -20,8 +20,8 @@ function main
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	local target_branch=$(echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/head\///')
-	local lines_changed=$(count-changed-lines "$target_branch" \
+	local base_branch=$(echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///')
+	local lines_changed=$(count-changed-lines "$base_branch" \
 		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
