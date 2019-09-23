@@ -69,7 +69,7 @@ function size-validation
 function azure-pipelines-yaml-protection
 {
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	if git-diff $(get-base-branch) $pullrequest_id | egrep '^[0-9] +[0-9] +azure-pipelines\.yaml$' 
+	if git-diff $(get-base-branch) $pullrequest_id | egrep '^[0-9] +[0-9] +azure-pipelines\.yml$' 
 	then
 		pullrequest-set-preconditions-status $pullrequest_id "failed"
 		red "******************************************************************"
