@@ -34,6 +34,12 @@ function pullrequest-set-preconditions-status
 		"$state" > /dev/null	
 }
 
+function get-base-branch
+{
+	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
+	echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///')
+}
+
 # Param lines_threshold
 # Param lines_include_pattern (optional)
 # Param lines_exclude_pattern (optional)
@@ -48,8 +54,7 @@ function size-validation
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	local base_branch=$(echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///')
-	local lines_changed=$(count-changed-lines "$base_branch" \
+	local lines_changed=$(count-changed-lines $(get-base-branch) \
 		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
@@ -64,7 +69,7 @@ function size-validation
 function azure-pipelines-yaml-protection
 {
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	if git-diff | egrep '^[0-9] +[0-9] +azure-pipelines\.yaml$' 
+	if git-diff $(get-base-branch) $pullrequest_id | egrep '^[0-9] +[0-9] +azure-pipelines\.yaml$' 
 	then
 		pullrequest-set-preconditions-status $pullrequest_id "failed"
 		red "******************************************************************"
