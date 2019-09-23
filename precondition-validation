@@ -5,17 +5,33 @@ set -e
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
+source <(otc-task-include lib/console.sh)
 
-
-function vsts-set-size-status
+function pullrequest-set-size-status
 {
 	local pullrequest_id="$1"
 	local state="$2"
+	assert-not-empty pullrequest_id
+	assert-not-empty state
 	vsts-pr-push-status \
 		"$pullrequest_id" \
 		"precondition" \
 		"size" \
-		"failed" > /dev/null	
+		"$state" \
+		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR"> /dev/null	
+}
+
+function pullrequest-set-preconditions-status
+{
+	local pullrequest_id="$1"
+	local state="$2"
+	assert-not-empty pullrequest_id
+	assert-not-empty state
+	vsts-pr-push-status \
+		"$pullrequest_id" \
+		"precondition" \
+		"generic" \
+		"$state" > /dev/null	
 }
 
 # Param lines_threshold
@@ -23,7 +39,7 @@ function vsts-set-size-status
 # Param lines_exclude_pattern (optional)
 # Required environment variables:
 #  - SYSTEM_PULLREQUEST_TARGETBRANCH
-function main
+function size-validation
 {
 	local lines_threshold=$1
 	local lines_include_pattern="$2"
@@ -37,10 +53,28 @@ function main
 		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
-		vsts-set-size-status "$pullrequest_id" "failed"
+		pullrequest-set-size-status "$pullrequest_id" "failed"
+		red "Pull request size ($lines_changed lines) exceeds threshold ($lines_threshold)."
 	else
-		vsts-set-size-status "$pullrequest_id" "succeeded"
+		pullrequest-set-size-status "$pullrequest_id" "succeeded"
+		green "Pull Request size validation passed."
 	fi
 }
 
-main $@
+function azure-pipelines-yaml-protection
+{
+	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
+	if git-diff | egrep '^[0-9] +[0-9] +azure-pipelines\.yaml$' 
+	then
+		pullrequest-set-preconditions-status $pullrequest_id "failed"
+		red "******************************************************************"
+		red "* azure-pipelines.yaml should not been modified in topic branch. *"
+		red "******************************************************************"
+		exit 47 # Critical, pipeline must not procceed.
+	fi
+
+	pullrequest-set-preconditions-status $pullrequest_id "succeeded"
+}
+
+azure-pipelines-yaml-protection
+size-validation "$1" "$2" "$3"

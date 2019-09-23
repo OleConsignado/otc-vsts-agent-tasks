@@ -61,6 +61,32 @@ function commit-changes-and-tag
 	git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1	
 }
 
+GIT_DIFF_CHECKOUT_ERROR=10
+
+# Param base
+# Param current
+function git-diff
+{
+	local base_branch="$1"
+	local pullrequest_id="$2"
+	assert-not-empty base_branch
+	assert-not-empty pullrequest_id
+	
+	if ! git checkout $base_branch > /dev/null 2>&1
+	then
+		echo "Error checking out $base_branch" >&2
+		return $GIT_DIFF_CHECKOUT_ERROR
+	fi
+	
+	if ! git checkout pull/$pullrequest_id/merge > /dev/null 2>&1	
+	then
+		echo "Error checking out pull/$pullrequest_id/merge" >&2
+		return $GIT_DIFF_CHECKOUT_ERROR
+	fi
+
+	git diff --numstat $base_branch
+}
+
 # Param base_branch
 # Param pullrequest_id
 # Param include_pattern (optional)
@@ -91,16 +117,17 @@ function count-changed-lines
 	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9] +[0-9] +/')
 	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9] +[0-9] +/')
 
-	git checkout $base_branch > /dev/null 2>&1
-	git checkout pull/$pullrequest_id/merge > /dev/null 2>&1
+	# git checkout $base_branch > /dev/null 2>&1
+	# git checkout pull/$pullrequest_id/merge > /dev/null 2>&1
+	
 	local git_diff_result_file=$(mktemp -t "pr-diff-${pullrequest_id}-XXXXXXXX")
-	git diff --numstat $base_branch | \
+	git-diff $base_branch $pullrequest_id | \
 		egrep "$include_pattern" | \
 		egrep -v "$exclude_pattern" > "$git_diff_result_file"
 	echo "Counting lines ..." >&2
 	cat "$git_diff_result_file" >&2
 	local total_lines=$(cat "$git_diff_result_file" | awk '{n += $1+$2}; END{print n}')
 	rm -f "$git_diff_result_file"
-	echo "Total: $total_lines" >&2
+	echo "Sum (added + removed): $total_lines" >&2
 	echo $total_lines
 }
