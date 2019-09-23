@@ -106,7 +106,7 @@ function vsts-pr-push-status
 			\"genre\": \"$context_genre\", \
 			\"name\": \"$context_name\" \
 		}, \
-		\"state\": \"$state\" \
+		\"state\": \"$state\", \
 		\"targetUrl\": \"$target_url\" \
 	}"
 	vsts-request "POST" \
