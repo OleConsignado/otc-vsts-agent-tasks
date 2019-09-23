@@ -2,6 +2,8 @@
 # Depends on assert.sh
 #---------------------
 
+VSTS_REQUEST_FAIL=37
+
 # Expected environment variables:
 # - SYSTEM_COLLECTIONURI
 # - VCS_TOKEN
@@ -18,7 +20,17 @@ function vsts-request
 	assert-not-empty VCS_TOKEN
 	assert-not-empty path
 	local url="$(echo $SYSTEM_COLLECTIONURI | sed 's/\/$//')$path"
-	curl -s -u _:$VCS_TOKEN -d "$payload" -H "Content-Type: application/json" -X "$method" "$url"
+	local curl_output=$(mktemp -t "vsts-req-curl-XXXXXXXX")
+	local return_code=0
+	if ! curl --fail -s -u _:$VCS_TOKEN -d "$payload" -H "Content-Type: application/json" \
+		-X "$method" "$url" -o $curl_output
+	then
+		echo "vsts-request failed while trying to '$method' '$url'" >&2
+		return_code=$VSTS_REQUEST_FAIL
+	fi
+	cat $curl_output
+	rm -f $curl_output
+	return $return_code
 }
 
 # Param pullrequest_id
