@@ -15,7 +15,7 @@ function pullrequest-set-size-status
 	assert-not-empty state
 	vsts-pr-push-status \
 		"$pullrequest_id" \
-		"precondition" \
+		"preconditions" \
 		"size" \
 		"$state" \
 		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR"> /dev/null	
@@ -29,7 +29,7 @@ function pullrequest-set-preconditions-status
 	assert-not-empty state
 	vsts-pr-push-status \
 		"$pullrequest_id" \
-		"precondition" \
+		"preconditions" \
 		"generic" \
 		"$state" > /dev/null	
 }
