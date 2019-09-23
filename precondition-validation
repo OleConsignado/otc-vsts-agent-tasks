@@ -37,7 +37,7 @@ function pullrequest-set-preconditions-status
 function get-base-branch
 {
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
-	echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///')
+	echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///'
 }
 
 # Param lines_threshold
