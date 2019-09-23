@@ -86,15 +86,30 @@ function vsts-pull-request-comment-change-status
 }
 
 # Param pullrequest_id
-function vsts-pr-set-status
+# Param context_genre
+# Param context_name
+# Param state
+# Param target_url (optional)
+function vsts-pr-push-status
 {
 	local pullrequest_id="$1"
 	local context_genre="$2"
 	local context_name="$3"
 	local state="$4"
+	local target_url="$5"
 	assert-not-empty pullrequest_id
 	assert-not-empty context_genre
 	assert-not-empty context_name
 	assert-not-empty state
 	local repository_id=$(vsts-get-repoid-by-prid "$pullrequest_id")
+	local payload = "{ \"context\": { \
+			\"genre\": \"$context_genre\", \
+			\"name\": \"$context_name\" \
+		}, \
+		\"state\": \"$state\" \
+		\"targetUrl\": \"$target_url\" \
+	}"
+	vsts-request "POST" \
+		"/_apis/git/repositories/$repository_id/pullRequests/$pullrequest_id/statuses?api-version=5.1-preview.1" \
+		"$payload"
 }

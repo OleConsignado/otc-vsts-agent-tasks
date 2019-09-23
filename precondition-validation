@@ -6,6 +6,18 @@ source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 
+
+function vsts-set-size-status
+{
+	local pullrequest_id="$1"
+	local state="$2"
+	vsts-pr-push-status \
+		"$pullrequest_id" \
+		"precondition" \
+		"size" \
+		"failed" > /dev/null	
+}
+
 # Param lines_threshold
 # Param lines_include_pattern (optional)
 # Param lines_exclude_pattern (optional)
@@ -14,8 +26,8 @@ source <(otc-task-include lib/vsts.sh)
 function main
 {
 	local lines_threshold=$1
-	local lines_include_pattern=$2
-	local lines_exclude_pattern=$3
+	local lines_include_pattern="$2"
+	local lines_exclude_pattern="$3"
 	assert-not-empty lines_threshold
 	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
@@ -25,9 +37,9 @@ function main
 		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
-		vsts-comment-pull-request \
-			"$SYSTEM_PULLREQUEST_PULLREQUESTID" "Precondition failed: $lines_changed > $lines_threshold" \
-			> /dev/null
+		vsts-set-size-status "$pullrequest_id" "failed"
+	else
+		vsts-set-size-status "$pullrequest_id" "succeeded"
 	fi
 }
 
