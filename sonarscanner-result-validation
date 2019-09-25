@@ -35,29 +35,31 @@ function main
 {
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 	assert-not-empty pullrequest_id
-	local analysis_report=$(mktemp -t \
+	local analysis_report_url_file=$(mktemp -t \
 		"pr-sonar-report-url-${pullrequest_id}-XXXXXXXX")
 	
-	if sonar-analysis-validation $pullrequest_id > $analysis_report
+	if sonar-analysis-validation $pullrequest_id > $analysis_report_url_file
 	then
 		pullrequest-set-quality-gate-status \
 			"$pullrequest_id" \
 			"succeeded" \
-			"$(cat $analysis_report)" \
-			"Static analysis passed"
+			"$(cat $analysis_report_url_file)" \
+			"SonarQube analysis succeeded"
 
 	elif [ "$?" -eq "$SONAR_ANALYSIS_VALIDATION_FAILED" ]
 	then
 		pullrequest-set-quality-gate-status \
 			"$pullrequest_id" \
 			"failed" \
-			"$(cat $analysis_report)" \
-			"Static analysis failed"
+			"$(cat $analysis_report_url_file)" \
+			"SonarQube analysis failed"
 	else
 		local error_code=$?
 		red "ERROR: Sonar analysis validation returned $error_code" >&2
 		return $error_code # will exit with error code
 	fi
+
+	rm -f $analysis_report_url_file > /dev/null 2>&1
 }
 
 main $@

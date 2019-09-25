@@ -55,8 +55,8 @@ function main
 		red "Pull request size ($lines_changed lines) exceeds threshold ($lines_threshold)."
 	else
 		pullrequest-set-size-status "$pullrequest_id" "succeeded" \
-			"Size validation passed (actual size $lines_changed, threshold $lines_threshold)"
-		green "Pull Request size validation passed."
+			"Size validation succeeded (actual size $lines_changed, threshold $lines_threshold)"
+		green "Pull Request size validation succeeded."
 	fi
 }
 

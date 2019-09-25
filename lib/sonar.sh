@@ -20,7 +20,7 @@ SONAR_ANALYSIS_VALIDATION_FAILED=1 # Not an error. Validation not passed
 function sonar-analysis-validation
 {
 	local pullrequest_id=$1
-	
+
 	assert-not-empty pullrequest_id
 	assert-not-empty SONARQUBE_USERKEY
 	assert-not-empty SONARSCANNER_END_OUTPUT_FILE
@@ -85,24 +85,10 @@ function sonar-analysis-validation
 
 				if [ "$sonar_result" = "OK" ]
 				then
-					green "Sonar analysis passed!" >&2
-					# pullrequest-set-quality-gate-status \
-					# 	"$pullrequest_id" \
-					# 	"succeeded" \
-					# 	"$report_url" \
-					# 	"Static analysis passed"
+					green "Sonar analysis succeeded!" >&2
 				else
 					red "Sonar analysis failed! Result: $sonar_result" >&2
 					return_code=$SONAR_ANALYSIS_VALIDATION_FAILED
-					# pullrequest-set-quality-gate-status \
-					# 	"$pullrequest_id" \
-					# 	"failed" \
-					# 	"$report_url" \
-					# 	"Static analysis failed"
-					#pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
-#	Verifique o resultado em [$report_url]($report_url)."
-					#pr_comment_id=$(vsts-comment-pull-request "$pullrequest_id" "$pr_comment_text")
-
 					#echo "Sonar result:"
 					#echo "--------------------------------------"
 					#cat $sonar_task_result_output_file
