@@ -102,6 +102,8 @@ function vsts-pull-request-comment-change-status
 # Param context_name
 # Param state
 # Param target_url (optional)
+# Param description (optional)
+# Reference: https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1
 function vsts-pr-push-status
 {
 	local pullrequest_id="$1"
@@ -109,6 +111,7 @@ function vsts-pr-push-status
 	local context_name="$3"
 	local state="$4"
 	local target_url="$5"
+	local description="$6"
 	assert-not-empty pullrequest_id
 	assert-not-empty context_genre
 	assert-not-empty context_name
@@ -122,6 +125,7 @@ function vsts-pr-push-status
 			}, \
 			\"state\": \"$state\", \
 			\"targetUrl\": \"$target_url\" \
+			\"description\": \"$description\" \
 		}"
 	vsts-request "POST" \
 		"/_apis/git/repositories/$repository_id/pullRequests/$pullrequest_id/statuses?api-version=5.1-preview.1" \

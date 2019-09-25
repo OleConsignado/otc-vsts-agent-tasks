@@ -13,12 +13,21 @@ function pullrequest-set-size-status
 	local state="$2"
 	assert-not-empty pullrequest_id
 	assert-not-empty state
+	local description=''
+	if [ "$state" = "succeeded" ]
+	then
+		description='Size validation passed'
+	elif [ "$state" = "failed" ]
+	then
+		description='Size validation failed'
+	fi
 	vsts-pr-push-status \
 		"$pullrequest_id" \
 		"preconditions" \
 		"size" \
 		"$state" \
-		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR"> /dev/null	
+		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR" \
+		"$description"> /dev/null	
 }
 
 function pullrequest-set-preconditions-status
