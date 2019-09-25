@@ -44,7 +44,7 @@ function main
 			"$pullrequest_id" \
 			"succeeded" \
 			"$(cat $analysis_report_url_file)" \
-			"SonarQube analysis succeeded"
+			"Sonarqube analysis succeeded"
 
 	elif [ "$?" -eq "$SONAR_ANALYSIS_VALIDATION_FAILED" ]
 	then
@@ -52,7 +52,7 @@ function main
 			"$pullrequest_id" \
 			"failed" \
 			"$(cat $analysis_report_url_file)" \
-			"SonarQube analysis failed"
+			"Sonarqube analysis failed"
 	else
 		local error_code=$?
 		red "ERROR: Sonar analysis validation returned $error_code" >&2
