@@ -22,7 +22,7 @@ function pullrequest-set-quality-gate-status
 	vsts-pr-push-status \
 		"$pullrequest_id" \
 		"analysis" \
-		"qualitygate" \
+		"sonarqube" \
 		"$state" \
 		"$report_url" \
 		"$description" > /dev/null	
