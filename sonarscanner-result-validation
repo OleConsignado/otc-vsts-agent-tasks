@@ -1,12 +1,13 @@
 #!/bin/bash
 
 source <(otc-task-include lib/vsts.sh)
+source <(otc-task-include lib/console.sh)
 
 # Validade result
-TASK_STATUS_URL=$(grep 'INFO: More about the report processing at ' sonarscanner-end-output | egrep -o 'https?://.*')
-REPORT_URL=$(grep 'INFO: ANALYSIS SUCCESSFUL, you can browse ' sonarscanner-end-output | egrep -o 'https?://.*')
-SONAR_BASE_URL=$(echo $TASK_STATUS_URL | sed -E 's/\/api\/ce\/task\?id=.*//g')
-POOLING_ATTEMPS=0
+task_status_url=$(grep 'INFO: More about the report processing at ' sonarscanner-end-output | egrep -o 'https?://.*')
+report_url=$(grep 'INFO: ANALYSIS SUCCESSFUL, you can browse ' sonarscanner-end-output | egrep -o 'https?://.*')
+sonar_base_url=$(echo $task_status_url | sed -E 's/\/api\/ce\/task\?id=.*//g')
+pooling_attemps=0
 
 while :
 do
@@ -15,10 +16,10 @@ do
     rm sonar-task-status.json
   fi
 
-  if ! curl -u $SONARQUBE_USERKEY: --fail -s $TASK_STATUS_URL > sonar-task-status.json
+  if ! curl -u $SONARQUBE_USERKEY: --fail -s $task_status_url > sonar-task-status.json
   then 
-    echo -e "\e[31mFalha ao ler o status sobre a analise do SonarQube"
-    echo -e "\e[31mNao foi possivel acessar a URL $TASK_STATUS_URL"
+    red "Falha ao ler o status sobre a analise do SonarQube"
+    red "Nao foi possivel acessar a URL $task_status_url"
     exit 95
   fi
 
@@ -27,70 +28,70 @@ do
   echo
   echo "================================================================="
 
-  SONAR_STATUS=$(cat sonar-task-status.json | jq -r -M '.task.status')
-  ANALYSIS_ID=$(cat sonar-task-status.json | jq -r -M '.task.analysisId')
-  RESULT_URL="$SONAR_BASE_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID"
+  sonar_status=$(cat sonar-task-status.json | jq -r -M '.task.status')
+  analysis_id=$(cat sonar-task-status.json | jq -r -M '.task.analysisId')
+  result_url="$sonar_base_url/api/qualitygates/project_status?analysisId=$analysis_id"
 
-  if [ "$SONAR_STATUS" != "IN_PROGRESS" ] && [ "$SONAR_STATUS" != "PENDING" ]
+  if [ "$sonar_status" != "IN_PROGRESS" ] && [ "$sonar_status" != "PENDING" ]
   then
 
     echo "Analise concluida!"
 
-    if [ "$SONAR_STATUS" = "SUCCESS" ] 
+    if [ "$sonar_status" = "SUCCESS" ] 
     then          
 
-      if ! curl -u $SONARQUBE_USERKEY: --fail -s $RESULT_URL > sonar-result.json
+      if ! curl -u $SONARQUBE_USERKEY: --fail -s $result_url > sonar-result.json
       then
-  	    echo -e "\e[31mFalha ao ler o resulta da analise do SonarQube"
-  	    echo -e "\e[31mNao foi possivel acessar a URL $RESULT_URL"
+  	    red "Falha ao ler o resulta da analise do SonarQube"
+  	    red "Nao foi possivel acessar a URL $result_url"
   	    exit 96
       fi
 
-      echo "sonar-result ===================================================="
-      cat sonar-result.json
-      echo
-      echo "================================================================="
+      #echo "sonar-result ===================================================="
+      #cat sonar-result.json
+      #echo
+      #echo "================================================================="
 
-      SONAR_RESULT=$(cat sonar-result.json | jq -r -M '.projectStatus.status')
+      sonar_result=$(cat sonar-result.json | jq -r -M '.projectStatus.status')
 
-      if [ "$SONAR_RESULT" = "OK" ]
+      if [ "$sonar_result" = "OK" ]
       then
-	      echo -e "\e[32mParabens, a validacao pelo SonarQube passou!"
+	      green "Parabens, a validacao pelo SonarQube passou!"
 	      
-	      EXIT_CODE=0
+	      exit_code=0
 	  else
-	      echo -e "\e[31mLamento, a validacao pelo SonarQube nao passou. Status retornado: $SONAR_RESULT"
+	      red "Lamento, a validacao pelo SonarQube nao passou. Status retornado: $sonar_result"
 
-        PR_COMMENT_TEXT="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
-Verifique o resultado em [$REPORT_URL]($REPORT_URL)."
-        PR_COMMENT_ID=$(vsts-comment-pull-request "$SYSTEM_PULLREQUEST_PULLREQUESTID" "$PR_COMMENT_TEXT")
+        pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
+Verifique o resultado em [$report_url]($report_url)."
+        pr_comment_id=$(vsts-comment-pull-request "$SYSTEM_PULLREQUEST_PULLREQUESTID" "$pr_comment_text")
 
         echo "Sonar result:"
         echo "--------------------------------------"
         cat sonar-result.json
         echo
 
-	      EXIT_CODE=87
+	      exit_code=87
       fi
 
     else
-      echo -e "\e[31mA task de validacao apresentou um status inesperado. Status retornado: $SONAR_STATUS"
+      red "A task de validacao apresentou um status inesperado. Status retornado: $sonar_status"
 
-      EXIT_CODE=85
+      exit_code=85
     fi
 
-    echo "Verifique o relatorio em: $REPORT_URL"
+    echo "Verifique o relatorio em: $report_url"
 
-    exit $EXIT_CODE
+    exit $exit_code
 
-  elif [ "$POOLING_ATTEMPS" -gt "60" ]
+  elif [ "$pooling_attemps" -gt "60" ]
   then
-    echo -e "\e[31mNao foi possivel obter o resultado da analise do SonarQube (limite de tentativas excedido)"
+    red "Nao foi possivel obter o resultado da analise do SonarQube (limite de tentativas excedido)"
 
     exit 77
   fi
 
-  POOLING_ATTEMPS=$((POOLING_ATTEMPS+1))
-  echo "Status: $SONAR_STATUS"
+  pooling_attemps=$((pooling_attemps+1))
+  echo "Status: $sonar_status"
   sleep 1
 done
