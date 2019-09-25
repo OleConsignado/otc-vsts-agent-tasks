@@ -6,6 +6,28 @@ source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
 
+# Param pullrequest_id
+# Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
+# Param report_url
+# Para description (optional)
+function pullrequest-set-quality-gate-status
+{
+	local pullrequest_id="$1"
+	local state="$2"
+	local report_url="$3"
+	local description="$4"
+	assert-not-empty pullrequest_id
+	assert-not-empty state
+	assert-not-empty report_url
+	vsts-pr-push-status \
+		"$pullrequest_id" \
+		"analysis" \
+		"qualitygate" \
+		"$state" \
+		"$report_url" \
+		"$description" > /dev/null	
+}
+
 SONARSCANNER_END_OUTPUT_FILE='sonarscanner-end-output'
 
 SONAR_ANALYSIS_VALIDATION_SONAR_API_STATUS_ERROR=95
@@ -60,7 +82,7 @@ function sonar-analysis-validation
 		if [ "$sonar_status" != "IN_PROGRESS" ] && [ "$sonar_status" != "PENDING" ]
 		then
 
-			green "Analise concluida!"
+			echo "Analysis completed!"
 			got_result=true
 
 			if [ "$sonar_status" = "SUCCESS" ] 
@@ -82,12 +104,21 @@ function sonar-analysis-validation
 				if [ "$sonar_result" = "OK" ]
 				then
 					green "Sonar analysis passed!"
+					pullrequest-set-quality-gate-status \
+						"$pullrequest_id" \
+						"succeeded" \
+						"$report_url" \
+						"Quality gate passed!"
 				else
 					red "Sonar analysis failed! Result: $sonar_result"
-
-					pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
-	Verifique o resultado em [$report_url]($report_url)."
-					pr_comment_id=$(vsts-comment-pull-request "$pullrequest_id" "$pr_comment_text")
+					pullrequest-set-quality-gate-status \
+						"$pullrequest_id" \
+						"failed" \
+						"$report_url" \
+						"Quality gate failed!"
+					#pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
+#	Verifique o resultado em [$report_url]($report_url)."
+					#pr_comment_id=$(vsts-comment-pull-request "$pullrequest_id" "$pr_comment_text")
 
 					#echo "Sonar result:"
 					#echo "--------------------------------------"
