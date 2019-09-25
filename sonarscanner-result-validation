@@ -108,14 +108,14 @@ function sonar-analysis-validation
 						"$pullrequest_id" \
 						"succeeded" \
 						"$report_url" \
-						"Quality gate passed!"
+						"Static analysis passed"
 				else
 					red "Sonar analysis failed! Result: $sonar_result"
 					pullrequest-set-quality-gate-status \
 						"$pullrequest_id" \
 						"failed" \
 						"$report_url" \
-						"Quality gate failed!"
+						"Static analysis failed"
 					#pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
 #	Verifique o resultado em [$report_url]($report_url)."
 					#pr_comment_id=$(vsts-comment-pull-request "$pullrequest_id" "$pr_comment_text")
