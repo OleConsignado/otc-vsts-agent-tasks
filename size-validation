@@ -14,7 +14,10 @@ function pullrequest-set-size-status
 	assert-not-empty pullrequest_id
 	assert-not-empty state
 	local description=''
-	if [ "$state" = "succeeded" ]
+	if [ "$state" = "pending" ]
+	then
+		description='Size validation pending'
+	elif [ "$state" = "succeeded" ]
 	then
 		description='Size validation passed'
 	elif [ "$state" = "failed" ]
@@ -65,6 +68,7 @@ function size-validation
 function azure-pipelines-yaml-protection
 {
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
+	pullrequest-set-size-status "$pullrequest_id" "pending"
 	git-diff $(get-base-branch) $pullrequest_id
 	if git-diff $(get-base-branch) $pullrequest_id | egrep '^[0-9] +[0-9] +azure-pipelines\.yml$' 
 	then
