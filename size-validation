@@ -7,30 +7,23 @@ source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
 
+# Param pullrequest_id
+# Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
+# Para description (optional)
 function pullrequest-set-size-status
 {
 	local pullrequest_id="$1"
 	local state="$2"
+	local description="$3"
 	assert-not-empty pullrequest_id
 	assert-not-empty state
-	local description=''
-	if [ "$state" = "pending" ]
-	then
-		description='Size validation pending'
-	elif [ "$state" = "succeeded" ]
-	then
-		description='Size validation passed'
-	elif [ "$state" = "failed" ]
-	then
-		description='Size validation failed'
-	fi
 	vsts-pr-push-status \
 		"$pullrequest_id" \
 		"preconditions" \
 		"pr_size" \
 		"$state" \
 		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR" \
-		"$description"> /dev/null	
+		"$description" > /dev/null	
 }
 
 function get-base-branch
@@ -57,10 +50,12 @@ function size-validation
 		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
-		pullrequest-set-size-status "$pullrequest_id" "failed"
+		pullrequest-set-size-status "$pullrequest_id" "failed" \
+			"Size validation failed (actual size = $lines_changed; threshold = $threshold)"
 		red "Pull request size ($lines_changed lines) exceeds threshold ($lines_threshold)."
 	else
-		pullrequest-set-size-status "$pullrequest_id" "succeeded"
+		pullrequest-set-size-status "$pullrequest_id" "succeeded" \
+			"Size validation passed (actual size = $lines_changed; threshold = $threshold)"
 		green "Pull Request size validation passed."
 	fi
 }
