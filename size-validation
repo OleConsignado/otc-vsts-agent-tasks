@@ -24,23 +24,10 @@ function pullrequest-set-size-status
 	vsts-pr-push-status \
 		"$pullrequest_id" \
 		"preconditions" \
-		"size" \
+		"pr_size" \
 		"$state" \
 		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR" \
 		"$description"> /dev/null	
-}
-
-function pullrequest-set-preconditions-status
-{
-	local pullrequest_id="$1"
-	local state="$2"
-	assert-not-empty pullrequest_id
-	assert-not-empty state
-	vsts-pr-push-status \
-		"$pullrequest_id" \
-		"preconditions" \
-		"generic" \
-		"$state" > /dev/null	
 }
 
 function get-base-branch
@@ -81,14 +68,11 @@ function azure-pipelines-yaml-protection
 	git-diff $(get-base-branch) $pullrequest_id
 	if git-diff $(get-base-branch) $pullrequest_id | egrep '^[0-9] +[0-9] +azure-pipelines\.yml$' 
 	then
-		pullrequest-set-preconditions-status $pullrequest_id "failed"
 		red "******************************************************************"
 		red "* azure-pipelines.yaml should not been modified in topic branch. *"
 		red "******************************************************************"
 		exit 47 # Critical, pipeline must not procceed.
 	fi
-
-	pullrequest-set-preconditions-status $pullrequest_id "succeeded"
 }
 
 azure-pipelines-yaml-protection
