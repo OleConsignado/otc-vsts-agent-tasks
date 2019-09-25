@@ -40,7 +40,7 @@ function sonar-analysis-validation
 	
 	local got_result=false
 
-	while ! got_result :
+	while ! $got_result :
 	do
 		if ! curl -u $SONARQUBE_USERKEY: --fail -s $task_status_url -o "$sonar_task_status_output_file"
 		then 
@@ -110,7 +110,7 @@ function sonar-analysis-validation
 
 		rm -f $sonar_task_status_output_file > /dev/null 2>&1
 			
-		if ! got_result
+		if ! $got_result
 		then
 			pooling_attempts=$((pooling_attempts+1))
 			echo "Status: $sonar_status"
