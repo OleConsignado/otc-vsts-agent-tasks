@@ -1,97 +1,122 @@
 #!/bin/bash
 
+set -e
+
+source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
 
-# Validade result
-task_status_url=$(grep 'INFO: More about the report processing at ' sonarscanner-end-output | egrep -o 'https?://.*')
-report_url=$(grep 'INFO: ANALYSIS SUCCESSFUL, you can browse ' sonarscanner-end-output | egrep -o 'https?://.*')
-sonar_base_url=$(echo $task_status_url | sed -E 's/\/api\/ce\/task\?id=.*//g')
-pooling_attemps=0
+SONARSCANNER_END_OUTPUT_FILE='sonarscanner-end-output'
 
-while :
-do
-  if [ -f sonar-task-status.json ]
-  then 
-    rm sonar-task-status.json
-  fi
+SONAR_ANALYSIS_VALIDATION_SONAR_API_STATUS_ERROR=95
+SONAR_ANALYSIS_VALIDATION_SONAR_API_RESULT_ERROR=96
+SONAR_ANALYSIS_VALIDATION_SONAR_API_UNKNOW_STATUS=97
+SONAR_ANALYSIS_VALIDATION_MAX_POOLING_ATTEMPTS_REACHED=98
 
-  if ! curl -u $SONARQUBE_USERKEY: --fail -s $task_status_url > sonar-task-status.json
-  then 
-    red "Falha ao ler o status sobre a analise do SonarQube"
-    red "Nao foi possivel acessar a URL $task_status_url"
-    exit 95
-  fi
+# Param pullrequest_id
+# Required environment variables:
+# - SONARQUBE_USERKEY
+# - SONARSCANNER_END_OUTPUT_FILE
+function sonar-analysis-validation
+{
+	local pullrequest_id=$1
 
-  echo "sonar-taks-status ==============================================="
-  cat sonar-task-status.json
-  echo
-  echo "================================================================="
+	local task_status_url=$(grep \
+		'INFO: More about the report processing at ' $SONARSCANNER_END_OUTPUT_FILE | \
+		egrep -o 'https?://.*')
+	
+	local report_url=$(grep \
+		'INFO: ANALYSIS SUCCESSFUL, you can browse ' $SONARSCANNER_END_OUTPUT_FILE | \
+		egrep -o 'https?://.*')
+	
+	local sonar_base_url=$(echo $task_status_url | sed -E 's/\/api\/ce\/task\?id=.*//g')
+	local pooling_attempts=0
+	
+	local sonar_task_status_output_file=$(mktemp -t \
+		"pr-sonar-val-status-${pullrequest_id}-XXXXXXXX.json")
+	
+	local sonar_task_result_output_file=$(mktemp -t \
+		"pr-sonar-val-result-${pullrequest_id}-XXXXXXXX.json")
+	
+	local got_result=false
 
-  sonar_status=$(cat sonar-task-status.json | jq -r -M '.task.status')
-  analysis_id=$(cat sonar-task-status.json | jq -r -M '.task.analysisId')
-  result_url="$sonar_base_url/api/qualitygates/project_status?analysisId=$analysis_id"
+	while ! got_result :
+	do
+		if ! curl -u $SONARQUBE_USERKEY: --fail -s $task_status_url -o "$sonar_task_status_output_file"
+		then 
+			red "Could not read sonar analysis status. Request to '$task_status_url' failed"
+			return $SONAR_ANALYSIS_VALIDATION_SONAR_API_STATUS_ERROR
+		fi
 
-  if [ "$sonar_status" != "IN_PROGRESS" ] && [ "$sonar_status" != "PENDING" ]
-  then
+		#echo "sonar-taks-status ==============================================="
+		#cat $sonar_task_status_output_file
+		#echo
+		#echo "================================================================="
 
-    echo "Analise concluida!"
+		local sonar_status=$(cat $sonar_task_status_output_file | jq -r -M '.task.status')
+		local analysis_id=$(cat $sonar_task_status_output_file | jq -r -M '.task.analysisId')
+		local result_url="$sonar_base_url/api/qualitygates/project_status?analysisId=$analysis_id"
 
-    if [ "$sonar_status" = "SUCCESS" ] 
-    then          
+		if [ "$sonar_status" != "IN_PROGRESS" ] && [ "$sonar_status" != "PENDING" ]
+		then
 
-      if ! curl -u $SONARQUBE_USERKEY: --fail -s $result_url > sonar-result.json
-      then
-  	    red "Falha ao ler o resulta da analise do SonarQube"
-  	    red "Nao foi possivel acessar a URL $result_url"
-  	    exit 96
-      fi
+			green "Analise concluida!"
+			got_result=true
 
-      #echo "sonar-result ===================================================="
-      #cat sonar-result.json
-      #echo
-      #echo "================================================================="
+			if [ "$sonar_status" = "SUCCESS" ] 
+			then					
 
-      sonar_result=$(cat sonar-result.json | jq -r -M '.projectStatus.status')
+				if ! curl -u $SONARQUBE_USERKEY: --fail -s $result_url -o $sonar_task_result_output_file
+				then
+					red "Could not read sonar analysis result. Request to '$result_url' failed"
+					return $SONAR_ANALYSIS_VALIDATION_SONAR_API_RESULT_ERROR
+				fi
 
-      if [ "$sonar_result" = "OK" ]
-      then
-	      green "Parabens, a validacao pelo SonarQube passou!"
-	      
-	      exit_code=0
-	  else
-	      red "Lamento, a validacao pelo SonarQube nao passou. Status retornado: $sonar_result"
+				#echo "sonar-result ===================================================="
+				#cat $sonar_task_result_output_file
+				#echo
+				#echo "================================================================="
 
-        pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
-Verifique o resultado em [$report_url]($report_url)."
-        pr_comment_id=$(vsts-comment-pull-request "$SYSTEM_PULLREQUEST_PULLREQUESTID" "$pr_comment_text")
+				sonar_result=$(cat $sonar_task_result_output_file | jq -r -M '.projectStatus.status')
 
-        echo "Sonar result:"
-        echo "--------------------------------------"
-        cat sonar-result.json
-        echo
+				if [ "$sonar_result" = "OK" ]
+				then
+					green "Sonar analysis passed!"
+				else
+					red "Sonar analysis failed! Result: $sonar_result"
 
-	      exit_code=87
-      fi
+					pr_comment_text="A análise do Sonarqube falhou (commit [$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')]($SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI/commit/$SYSTEM_PULLREQUEST_SOURCECOMMITID)). \
+	Verifique o resultado em [$report_url]($report_url)."
+					pr_comment_id=$(vsts-comment-pull-request "$pullrequest_id" "$pr_comment_text")
 
-    else
-      red "A task de validacao apresentou um status inesperado. Status retornado: $sonar_status"
+					#echo "Sonar result:"
+					#echo "--------------------------------------"
+					#cat $sonar_task_result_output_file
+					#echo					
+				fi
 
-      exit_code=85
-    fi
+			else
+				red "Sonar analysis task provided an unknow status. Provided status: $sonar_status"
+				return $SONAR_ANALYSIS_VALIDATION_SONAR_API_UNKNOW_STATUS
+			fi
 
-    echo "Verifique o relatorio em: $report_url"
+			echo "Analysis report: $report_url"
 
-    exit $exit_code
+		elif [ "$pooling_attempts" -gt "60" ]
+		then
+			red "Too many pooling attempts, terminating."
+			return $SONAR_ANALYSIS_VALIDATION_MAX_POOLING_ATTEMPTS_REACHED
+		fi
 
-  elif [ "$pooling_attemps" -gt "60" ]
-  then
-    red "Nao foi possivel obter o resultado da analise do SonarQube (limite de tentativas excedido)"
+		rm -f $sonar_task_status_output_file > /dev/null 2>&1
+			
+		if ! got_result
+		then
+			pooling_attempts=$((pooling_attempts+1))
+			echo "Status: $sonar_status"
+			sleep 1
+		fi
+	done
+}
 
-    exit 77
-  fi
-
-  pooling_attemps=$((pooling_attemps+1))
-  echo "Status: $sonar_status"
-  sleep 1
-done
+sonar-analysis-validation $SYSTEM_PULLREQUEST_PULLREQUESTID
