@@ -114,8 +114,8 @@ function count-changed-lines
 	# 'git diff --numstat' output is like '10   1   Path/To/File'
 	# replace leading '^'' with '^[0-9] +[0-9]' in order to make
 	# include/exclude pattern match only the 'Path/To/File' part.
-	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9][ \t]+[0-9][ \t]+/')
-	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9][ \t]+[0-9][ \t]+/')
+	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9]+ +[0-9]+ +/')
+	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9]+ +[0-9]+ +/')
 
 	# git checkout $base_branch > /dev/null 2>&1
 	# git checkout pull/$pullrequest_id/merge > /dev/null 2>&1
