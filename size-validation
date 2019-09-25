@@ -37,7 +37,7 @@ function get-base-branch
 # Param lines_exclude_pattern (optional)
 # Required environment variables:
 #  - SYSTEM_PULLREQUEST_TARGETBRANCH
-function size-validation
+function main
 {
 	local lines_threshold=$1
 	local lines_include_pattern="$2"
@@ -74,4 +74,4 @@ function azure-pipelines-yaml-protection
 }
 
 azure-pipelines-yaml-protection
-size-validation "$1" "$2" "$3"
+main $@
