@@ -124,7 +124,7 @@ function vsts-pr-push-status
 				\"name\": \"$context_name\" \
 			}, \
 			\"state\": \"$state\", \
-			\"targetUrl\": \"$target_url\" \
+			\"targetUrl\": \"$target_url\", \
 			\"description\": \"$description\" \
 		}"
 	vsts-request "POST" \
