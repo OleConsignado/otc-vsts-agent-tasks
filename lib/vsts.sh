@@ -60,8 +60,6 @@ function vsts-get-repoid-by-prid
 # vsts-comment-pull-request 
 # Usage: vsts-comment-pull-request comment_text
 
-VSTS_COMMENT_PR_MISS_REPOSITORY_ID=36
-
 # Param pullrequest_id
 # Param comment_text
 # Output comment_id

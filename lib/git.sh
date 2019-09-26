@@ -92,7 +92,7 @@ function git-diff
 # Param include_pattern (optional)
 # Param exclude_pattern (optional)
 # Return lines count on output 1
-# Information on output 2
+# Information/Error message goes to output 2
 function count-changed-lines
 {
 	local base_branch="$1"
@@ -113,14 +113,11 @@ function count-changed-lines
 	fi
 
 	# 'git diff --numstat' output is like '10   1   Path/To/File'
-	# replace leading '^'' with '^[0-9] +[0-9]' in order to make
+	# replace leading '^' with '^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+' in order to make
 	# include/exclude pattern match only the 'Path/To/File' part.
 	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
 	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
 
-	# git checkout $base_branch > /dev/null 2>&1
-	# git checkout pull/$pullrequest_id/merge > /dev/null 2>&1
-	
 	local git_diff_result_file=$(mktemp -t "pr-diff-${pullrequest_id}-XXXXXXXX")
 	git-diff $base_branch $pullrequest_id | \
 		egrep "$include_pattern" | \
