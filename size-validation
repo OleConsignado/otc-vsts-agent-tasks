@@ -64,8 +64,10 @@ function azure-pipelines-yaml-protection
 {
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	#git-diff $(get-base-branch) $pullrequest_id
-	if git-diff $(get-base-branch) $pullrequest_id | egrep '^[0-9 ]+azure-pipelines\.yml *$' 
+	echo "Modified items with no filter:"
+	git-diff $(get-base-branch) $pullrequest_id
+	if git-diff $(get-base-branch) $pullrequest_id | \
+		egrep '^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+azure-pipelines\.yml$' > /dev/null 2>&1
 	then
 		red "******************************************************************"
 		red "* azure-pipelines.yaml should not been modified in topic branch. *"

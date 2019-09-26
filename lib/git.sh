@@ -64,7 +64,7 @@ function commit-changes-and-tag
 GIT_DIFF_CHECKOUT_ERROR=10
 
 # Param base
-# Param current
+# Param pullrequest_id
 function git-diff
 {
 	local base_branch="$1"
@@ -91,7 +91,8 @@ function git-diff
 # Param pullrequest_id
 # Param include_pattern (optional)
 # Param exclude_pattern (optional)
-# Return lines count
+# Return lines count on output 1
+# Information on output 2
 function count-changed-lines
 {
 	local base_branch="$1"
@@ -114,8 +115,8 @@ function count-changed-lines
 	# 'git diff --numstat' output is like '10   1   Path/To/File'
 	# replace leading '^'' with '^[0-9] +[0-9]' in order to make
 	# include/exclude pattern match only the 'Path/To/File' part.
-	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9]+[ \t]+[0-9]+[ \t]+/')
-	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9]+[ \t]+[0-9]+[ \t]+/')
+	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
+	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
 
 	# git checkout $base_branch > /dev/null 2>&1
 	# git checkout pull/$pullrequest_id/merge > /dev/null 2>&1
@@ -124,10 +125,14 @@ function count-changed-lines
 	git-diff $base_branch $pullrequest_id | \
 		egrep "$include_pattern" | \
 		egrep -v "$exclude_pattern" > "$git_diff_result_file"
-	echo "Counting lines ..." >&2
+	echo "Counting lines..." >&2
 	cat "$git_diff_result_file" >&2
 	local total_lines=$(cat "$git_diff_result_file" | awk '{n += $1+$2}; END{print n}')
 	rm -f "$git_diff_result_file"
+	if [ -z "$total_lines" ]
+	then
+		total_lines="0"
+	fi
 	echo "Sum (added + removed): $total_lines" >&2
 	echo $total_lines
 }
