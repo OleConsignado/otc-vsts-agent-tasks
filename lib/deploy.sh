@@ -48,6 +48,10 @@ function deploy
 		local docker_image_full_name_and_tag="$ORGANIZATION/$chart_name:$tag"
 
 		dotnet-publish "$dotnet_configuration" "$project_dir" "$build_output_dir"	
+		
+		# Create/replace version file with tag as content 
+		echo "$tag" > "${build_output_dir}/version"
+		
 		docker-build "$build_output_dir" "$docker_image_full_name_and_tag"
 
 		rm -Rf "$build_output_dir"
