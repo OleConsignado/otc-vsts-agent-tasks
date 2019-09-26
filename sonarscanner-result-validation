@@ -10,13 +10,11 @@ source <(otc-task-include lib/sonar.sh)
 # Param pullrequest_id
 # Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
 # Param report_url
-# Para description (optional)
 function pullrequest-set-quality-gate-status
 {
 	local pullrequest_id="$1"
 	local state="$2"
 	local report_url="$3"
-	local description="$4"
 	assert-not-empty pullrequest_id
 	assert-not-empty state
 	assert-not-empty report_url
@@ -26,7 +24,7 @@ function pullrequest-set-quality-gate-status
 		"sonarqube" \
 		"$state" \
 		"$report_url" \
-		"$description" > /dev/null	
+		"Sonarqube analysis $state" > /dev/null	
 }
 
 SONARSCANNER_END_OUTPUT_FILE='sonarscanner-end-output'
@@ -43,16 +41,14 @@ function main
 		pullrequest-set-quality-gate-status \
 			"$pullrequest_id" \
 			"succeeded" \
-			"$(cat $analysis_report_url_file)" \
-			"Sonarqube analysis succeeded"
+			"$(cat $analysis_report_url_file)"
 
 	elif [ "$?" -eq "$SONAR_ANALYSIS_VALIDATION_FAILED" ]
 	then
 		pullrequest-set-quality-gate-status \
 			"$pullrequest_id" \
 			"failed" \
-			"$(cat $analysis_report_url_file)" \
-			"Sonarqube analysis failed"
+			"$(cat $analysis_report_url_file)"
 	else
 		local error_code=$?
 		red "ERROR: Sonar analysis validation returned $error_code" >&2

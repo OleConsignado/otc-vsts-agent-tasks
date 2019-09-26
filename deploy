@@ -14,6 +14,24 @@ source <(otc-task-include lib/assert.sh)
 ORGANIZATION="oleconsignado"
 
 # Param pullrequest_id
+# Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
+# Param report_url
+function pullrequest-set-deploy-status
+{
+	local pullrequest_id="$1"
+	local state="$2"
+	assert-not-empty pullrequest_id
+	assert-not-empty state
+	vsts-pr-push-status \
+		"$pullrequest_id" \
+		"deployment" \
+		"preview" \
+		"$state" \
+		"" \
+		"Deployment preview $state" > /dev/null	
+}
+
+# Param pullrequest_id
 # Param commit_id
 # Param namespace
 # Param release_name
@@ -43,8 +61,6 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
 	local comment_id=$(vsts-comment-pull-request $pullrequest_id "$comment_text")
 	vsts-pull-request-comment-change-status $pullrequest_id $comment_id 4 # 4 = closed
 }
-
-DEPLOY_MAIN_MISS_DEPLOY_FAILED=3
 
 # Param namespace
 # Param configuration
@@ -92,25 +108,35 @@ function main
 
 	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
 	local deployed_releases_list=$(mktemp --suffix="dep-rel-$BUILD_BUILDID")
+	local pr_deploy_status='failed'
 
 	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" "$artifact_suffix" "$deployed_releases_list"
 	then
 		if $is_pullrequest
 		then
+			pr_deploy_status='succeeded'
+
 			for release_name in $(cat "$deployed_releases_list")
 			do		
-				publish_deploy_link_on_pr_feed $pullrequest_id \
-					$SYSTEM_PULLREQUEST_SOURCECOMMITID \
-					$namespace \
-					$release_name
+				publish_deploy_link_on_pr_feed \
+					"$pullrequest_id" \
+					"$SYSTEM_PULLREQUEST_SOURCECOMMITID" \
+					"$namespace" \
+					"$release_name"
 			done
 
 			rm "$deployed_releases_list"
 		else
 			commit-changes-and-tag "$tag"
 		fi
-	else
-		return $DEPLOY_MAIN_MISS_DEPLOY_FAILED
+	fi
+
+	if $is_pullrequest
+	then
+		# push deploy status to pr
+		pullrequest-set-deploy-status \
+			"$pullrequest_id" \
+			"$pr_deploy_status"
 	fi
 }
 
