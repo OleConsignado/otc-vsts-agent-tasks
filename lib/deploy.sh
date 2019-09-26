@@ -58,16 +58,17 @@ function deploy
 		
 		docker-push "$docker_image_full_name_and_tag"
 		edit-helm-tag "$helm_dir" "$tag"
-		helm-dry-run "$helm_dir" 
+		helm-dry-run "$helm_dir" || return $?
 
 		# Deploy phase
 		local values_name="${chart_name}${artifacts_suffix}"
 		local release_name="r-${chart_name}-${namespace}${artifacts_suffix}"
 
-		helm-install-or-upgrade "$helm_dir" "$namespace" "$release_name" "Name=$values_name"
+		helm-install-or-upgrade "$helm_dir" "$namespace" \
+			"$release_name" "Name=$values_name" || return $?
 		
 		# Validation
-		helm-deploy-validation "$namespace" "$release_name"
+		helm-deploy-validation "$namespace" "$release_name" || return $?
 
 
 		if $output_releases_to_file
