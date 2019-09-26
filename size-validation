@@ -70,7 +70,7 @@ function azure-pipelines-yaml-protection
 		egrep '^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+azure-pipelines\.yml$' > /dev/null 2>&1
 	then
 		red "******************************************************************"
-		red "* azure-pipelines.yaml should not been modified in topic branch. *"
+		red "* azure-pipelines.yml should not be modified in topic branches.  *"
 		red "******************************************************************"
 		exit 47 # Critical, pipeline must not procceed.
 	fi
