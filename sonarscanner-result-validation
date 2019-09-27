@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
@@ -18,7 +16,7 @@ function pullrequest-set-quality-gate-status
 	assert-not-empty pullrequest_id
 	assert-not-empty state
 	assert-not-empty report_url
-	vsts-pr-push-status \
+	assert-success vsts-pr-push-status \
 		"$pullrequest_id" \
 		"analysis" \
 		"sonarqube" \

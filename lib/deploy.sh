@@ -1,6 +1,6 @@
-#-------------------------------------------------------------------
-# Depends on filesystem.sh; dotnet.sh; docker.sh; helm.sh; assert.sh
-#-------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# Depends on filesystem.sh; dotnet.sh; docker.sh; helm.sh; assert.sh; console.sh
+#-------------------------------------------------------------------------------
 
 DEPLOY_SOLUTION_DIR_NOT_FOUND=9
 
@@ -12,7 +12,7 @@ DEPLOY_SOLUTION_DIR_NOT_FOUND=9
 #       - tag
 #       - helm release name
 #       - values Name key (chartname + artifacts_suffix)
-# Param deployed_releases_output (optional)
+# Output 1 - release_name's
 function deploy
 {
 	local solution_dir=$(realpath $1)
@@ -20,7 +20,6 @@ function deploy
 	local tag=$3
 	local namespace=$4
 	local artifacts_suffix=$5
-	local deployed_releases_output=$6
 
 	assert-not-empty ORGANIZATION
 	directory-exists "$solution_dir" || return $DEPLOY_SOLUTION_DIR_NOT_FOUND
@@ -29,14 +28,6 @@ function deploy
 	assert-not-empty namespace
 
 	tag="${tag}${artifacts_suffix}"	
-
-	local output_releases_to_file=false
-
-	if ! [ -z "$deployed_releases_output" ]
-	then
-		>$deployed_releases_output
-		output_releases_to_file=true
-	fi
 
 	for helm_dir in $(find "$solution_dir" -name 'Kubernetes.Helm')
 	do
@@ -52,29 +43,25 @@ function deploy
 		# Create/replace version file with tag as content 
 		echo "$tag" > "${build_output_dir}/version"
 		
-		assert-success docker-build "$build_output_dir" "$docker_image_full_name_and_tag"
+		assert-success docker-build "$build_output_dir" "$docker_image_full_name_and_tag" >&2
 
-		rm -Rf "$build_output_dir"
+		rm -Rf "$build_output_dir" > /dev/null 2>&1
 		
-		assert-success docker-push "$docker_image_full_name_and_tag"
-		assert-success edit-helm-tag "$helm_dir" "$tag"
+		assert-success docker-push "$docker_image_full_name_and_tag" >&2
+		assert-success edit-helm-tag "$helm_dir" "$tag" >&2
 		
-		helm-dry-run "$helm_dir" || return $?
+		helm-dry-run "$helm_dir" >&2 || return $?
 
 		# Deploy phase
 		local values_name="${chart_name}${artifacts_suffix}"
 		local release_name="r-${chart_name}-${namespace}${artifacts_suffix}"
 
 		helm-install-or-upgrade "$helm_dir" "$namespace" \
-			"$release_name" "Name=$values_name" || return $?
+			"$release_name" "Name=$values_name" >&2 || return $?
 		
 		# Validation
-		helm-deploy-validation "$namespace" "$release_name" || return $?
+		helm-deploy-validation "$namespace" "$release_name" >&2 || return $?
 
-
-		if $output_releases_to_file
-		then
-			echo $release_name >> $deployed_releases_output
-		fi		
+		echo $release_name
 	done
 }

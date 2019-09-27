@@ -110,7 +110,7 @@ function main
 	local pr_deploy_status='failed'
 
 	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" \
-			"$artifact_suffix" "$deployed_releases_list"
+			"$artifact_suffix" > $deployed_releases_list
 	then
 		if $is_pullrequest
 		then
@@ -118,11 +118,11 @@ function main
 
 			for release_name in $(cat "$deployed_releases_list")
 			do		
-				publish_deploy_link_on_pr_feed \
-					"$pullrequest_id" \
-					"$SYSTEM_PULLREQUEST_SOURCECOMMITID" \
-					"$namespace" \
-					"$release_name"
+				#publish_deploy_link_on_pr_feed \
+				#	"$pullrequest_id" \
+				#	"$SYSTEM_PULLREQUEST_SOURCECOMMITID" \
+				#	"$namespace" \
+				#	"$release_name"
 			done
 
 			rm "$deployed_releases_list"
