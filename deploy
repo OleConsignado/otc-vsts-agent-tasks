@@ -23,8 +23,8 @@ function pullrequest-set-deploy-status
 	assert-not-empty state
 	vsts-pr-push-status \
 		"$pullrequest_id" \
-		"deployment" \
-		"preview" \
+		"ci" \
+		"deploy_preview" \
 		"$state" \
 		"" \
 		"Deployment preview $state" > /dev/null	
@@ -116,14 +116,14 @@ function main
 		then
 			pr_deploy_status='succeeded'
 
-			for release_name in $(cat "$deployed_releases_list")
-			do		
+			#for release_name in $(cat "$deployed_releases_list")
+			#do		
 				#publish_deploy_link_on_pr_feed \
 				#	"$pullrequest_id" \
 				#	"$SYSTEM_PULLREQUEST_SOURCECOMMITID" \
 				#	"$namespace" \
 				#	"$release_name"
-			done
+			#done
 
 			rm "$deployed_releases_list"
 		else
