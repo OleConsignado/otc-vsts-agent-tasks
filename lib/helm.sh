@@ -1,6 +1,6 @@
-#------------------------------------
-# Depends on filesystem.sh; assert.sh
-#------------------------------------
+#------------------------------------------------
+# Depends on filesystem.sh; assert.sh; console.sh
+#------------------------------------------------
 
 # discover-chart-name 
 # Get chart name for the given helm chart directory.
@@ -59,15 +59,15 @@ function helm-dry-run
 {
 	local helm_dir="$1"
 	directory-exists "$helm_dir" || return $HELM_DRY_RUN_HELM_DIR_NOT_FOUND
-	echo -n "Performing helm dry-run... "
+	echo -n "Performing helm dry-run... " >&2
 	if ! helm install "$helm_dir" --dry-run > /dev/null 2>&1
 	then
-		echo "FAILED!"
+		red "FAILED!" >&2
 		echo "helm-dry-run: helm dry-run failed, performing helm dry-run with --debug in order to expose errors." >&2
 		! helm install "$helm_dir" --dry-run --debug
 		return $HELM_DRY_RUN_FAILED
 	fi
-	echo "Passed!"
+	green "Passed!" >&2
 }
 
 # helm-release-exists
@@ -168,7 +168,7 @@ function helm-deploy-validation
 		return $HELM_DEPLOY_VALIDATION_REVISION_NOT_FOUND
 	fi	
 
-	echo -n "Checking POD creation... "
+	echo -n "Checking POD creation... " >&2
 	local pooling_attemps=0
 	local kubectl_get_pod_cmd="kubectl -n $namespace get pod -l release=$helm_release_name,revision=$release_revision -ojson"
 
@@ -179,21 +179,21 @@ function helm-deploy-validation
 		# If it exceeds, must be something wrong on Kubernetes scheduling
 		if [ "$pooling_attemps" -gt 30 ]
 		then
-			echo "FAILED"
+			echo "FAILED" >&2
 			echo "Could not validate POD creation." >&2
 			return $HELM_DEPLOY_VALIDATION_POD_CREATION_FAIL
 		fi
 
-		echo -n '.'
+		echo -n '.' >&2
 		sleep 1
 		pooling_attemps=$((pooling_attemps+1))
 	done
 
-	echo "OK"
+	echo "OK" >&2
 
 	# check POD status
 
-	echo "Checking POD status."
+	echo "Checking POD status." >&2
 
 	pooling_attemps=0
 	local max_pooling_attemps=180
@@ -215,21 +215,21 @@ function helm-deploy-validation
 		then
 			pod_status_pending=true
 			pooling_attemps_step="PENDING"
-			echo "Pending..."
+			echo "Pending..." >&2
 		else
 			pod_status_pending=false
 
 			if [ "$container_status" = "null" ]
 			then
 				pooling_attemps_step="INITIAL"
-				echo "Waiting..."
+				echo "Waiting..." >&2
 			elif [ "$(echo $container_status | jq -M '.waiting')" != "null" ]
 			then
 				pooling_attemps_step="CONTAINER_CREATING"
 
 				reason=$(echo $container_status | jq -Mr '.waiting.reason')
 				
-				echo "Waiting: $reason"
+				echo "Waiting: $reason" >&2
 
 				if [ "$reason" = "CrashLoopBackOff" ]
 				then
@@ -248,19 +248,19 @@ function helm-deploy-validation
 					deploy_validation_completed=true
 					deploy_sucess=true
 				else
-					echo "Container running... Looking for ready status [$pod_ready]"
+					echo "Container running... Looking for ready status [$pod_ready]" >&2
 				fi
 
 			elif [ "$(echo $container_status | jq -M '.terminated')" != "null" ] 
 			then
 				reason=$(echo $container_status | jq -Mr '.terminated.reason')
-				echo "Terminated: $reason" # reason: Error
+				echo "Terminated: $reason" >&2 # reason: Error
 
 				deploy_validation_completed=true
 				deploy_sucess=false
 			else
-				echo "## STATUS NOT MAPPED ##################################################"
-				echo $container_status
+				echo "## STATUS NOT MAPPED ##################################################" >&2
+				echo $container_status >&2
 			fi
 		fi
 
@@ -279,26 +279,26 @@ function helm-deploy-validation
 	then
 		if $pod_status_pending
 		then
-			echo -e "\e[31mError while trying to start $helm_release_name."
-			echo "POD pending: Kubernetes low on resources."
+			red "Error while trying to start $helm_release_name." >&2
+			echo "POD pending: Kubernetes low on resources." >&2
 		elif ! $deploy_validation_completed
 		then
-			echo -e "\e[31mCould not validate deployment, the POD is taking a long time to get ready, should be something wrong on Kubernetes Cluster."
-			echo "## POD details ##################################################"
-			kubectl -n $namespace describe pod -l release=$helm_release_name,revision=$release_revision
+			red "Could not validate deployment, the POD is taking a long time to get ready, should be something wrong on Kubernetes Cluster." >&2
+			echo "## POD details ##################################################" >&2
+			kubectl -n $namespace describe pod -l release=$helm_release_name,revision=$release_revision >&2
 		else
 			# TODO: improve log
-			echo -e "\e[31mError while trying to start $helm_release_name"
-			if ! kubectl -n $namespace logs -l release=$helm_release_name,revision=$release_revision -p
+			red "Error while trying to start $helm_release_name" >&2
+			if ! kubectl -n $namespace logs -l release=$helm_release_name,revision=$release_revision -p >&2
 			then
 				echo "Could not get container logs."
 			fi
 		fi
 
-		helm delete $helm_release_name --purge
+		helm delete $helm_release_name --purge >&2
 		return $HELM_DEPLOY_VALIDATION_POD_START_FAIL
 	fi
 
-	echo
-	echo -e "\e[32m$helm_release_name successfuly deployed."
+	echo >&2
+	green "$helm_release_name successfuly deployed." >&2
 }

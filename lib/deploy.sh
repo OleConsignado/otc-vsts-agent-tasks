@@ -47,17 +47,18 @@ function deploy
 		local project_dir=$(dirname "$helm_dir")
 		local docker_image_full_name_and_tag="$ORGANIZATION/$chart_name:$tag"
 
-		dotnet-publish "$dotnet_configuration" "$project_dir" "$build_output_dir"	
+		assert-success dotnet-publish "$dotnet_configuration" "$project_dir" "$build_output_dir"	
 		
 		# Create/replace version file with tag as content 
 		echo "$tag" > "${build_output_dir}/version"
 		
-		docker-build "$build_output_dir" "$docker_image_full_name_and_tag"
+		assert-success docker-build "$build_output_dir" "$docker_image_full_name_and_tag"
 
 		rm -Rf "$build_output_dir"
 		
-		docker-push "$docker_image_full_name_and_tag"
-		edit-helm-tag "$helm_dir" "$tag"
+		assert-success docker-push "$docker_image_full_name_and_tag"
+		assert-success edit-helm-tag "$helm_dir" "$tag"
+		
 		helm-dry-run "$helm_dir" || return $?
 
 		# Deploy phase

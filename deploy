@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 source <(otc-task-include lib/filesystem.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/dotnet.sh)
@@ -10,6 +8,7 @@ source <(otc-task-include lib/helm.sh)
 source <(otc-task-include lib/deploy.sh)
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
+source <(otc-task-include lib/console.sh)
 
 ORGANIZATION="oleconsignado"
 
@@ -103,14 +102,15 @@ function main
 			egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
 	else
 		tag="v$BUILD_BUILDID"
-		prepare-local-repo-for-changes
+		assert-success prepare-local-repo-for-changes
 	fi
 
 	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
 	local deployed_releases_list=$(mktemp --suffix="dep-rel-$BUILD_BUILDID")
 	local pr_deploy_status='failed'
 
-	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" "$artifact_suffix" "$deployed_releases_list"
+	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" \
+			"$artifact_suffix" "$deployed_releases_list"
 	then
 		if $is_pullrequest
 		then
@@ -127,14 +127,14 @@ function main
 
 			rm "$deployed_releases_list"
 		else
-			commit-changes-and-tag "$tag"
+			assert-success commit-changes-and-tag "$tag"
 		fi
 	fi
 
 	if $is_pullrequest
 	then
 		# push deploy status to pr
-		pullrequest-set-deploy-status \
+		assert-success pullrequest-set-deploy-status \
 			"$pullrequest_id" \
 			"$pr_deploy_status"
 	fi
