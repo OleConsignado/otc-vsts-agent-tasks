@@ -22,7 +22,7 @@ function assert-not-empty
 
 function assert-success
 {
-	if $@
+	if "$@"
 	then
 		echo -n > /dev/null
 	else
