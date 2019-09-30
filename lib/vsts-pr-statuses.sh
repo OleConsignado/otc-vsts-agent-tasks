@@ -4,6 +4,18 @@
 
 # For state params, see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate
 
+# Param state
+function friendly-state
+{
+	local state="$1"
+	assert-not-empty state
+	if [ "$state" = "notSet" ]
+	then
+		state="pending"
+	fi
+	echo "$state"
+}
+
 # Param pullrequest_id
 # Param state 
 # Param report_url (optional)
@@ -20,7 +32,7 @@ function pullrequest-set-quality-gate-status
 		"sonarqube" \
 		"$state" \
 		"$report_url" \
-		"Sonarqube analysis $state" > /dev/null	
+		"Sonarqube analysis $(friendly-state '$state')" > /dev/null	
 }
 
 # Param pullrequest_id
@@ -35,7 +47,7 @@ function pullrequest-set-size-status
 	assert-not-empty state
 	if [ -z "$description" ]
 	then
-		description="Size validation $state"
+		description="Size validation $(friendly-state '$state')"
 	fi
 	vsts-pr-push-status \
 		"$pullrequest_id" \
@@ -45,7 +57,6 @@ function pullrequest-set-size-status
 		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR" \
 		"$description" > /dev/null	
 }
-
 
 # Param pullrequest_id
 # Param state
@@ -61,5 +72,5 @@ function pullrequest-set-deploy-status
 		"deploy_preview" \
 		"$state" \
 		"" \
-		"Deployment preview $state" > /dev/null	
+		"Deployment preview $(friendly-state '$state')" > /dev/null	
 }
