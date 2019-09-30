@@ -41,9 +41,9 @@ function reset-pr-statuses
 {
 	local pullrequest_id="$1"
 	assert-not-empty pullrequest_id
-	pullrequest-set-quality-gate-status $pullrequest_id "pending"
-	pullrequest-set-size-status $pullrequest_id "pending"
-	pullrequest-set-deploy-status $pullrequest_id "pending"
+	pullrequest-set-quality-gate-status $pullrequest_id "notSet"
+	pullrequest-set-size-status $pullrequest_id "notSet"
+	pullrequest-set-deploy-status $pullrequest_id "notSet"
 }
 
 assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
