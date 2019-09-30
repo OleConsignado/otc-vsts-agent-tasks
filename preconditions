@@ -46,6 +46,7 @@ function reset-pr-statuses
 	pullrequest-set-deploy-status $pullrequest_id "pending"
 }
 
-reset-pr-statuses
+assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
+reset-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
 azure-pipelines-yaml-protection
 size-validation "$@"
