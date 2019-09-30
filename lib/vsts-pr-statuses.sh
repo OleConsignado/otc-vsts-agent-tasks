@@ -32,7 +32,7 @@ function pullrequest-set-quality-gate-status
 		"sonarqube" \
 		"$state" \
 		"$report_url" \
-		"Sonarqube analysis $(friendly-state '$state')" > /dev/null	
+		"Sonarqube analysis $(friendly-state "$state")" > /dev/null	
 }
 
 # Param pullrequest_id
@@ -47,7 +47,7 @@ function pullrequest-set-size-status
 	assert-not-empty state
 	if [ -z "$description" ]
 	then
-		description="Size validation $(friendly-state '$state')"
+		description="Size validation $(friendly-state "$state")"
 	fi
 	vsts-pr-push-status \
 		"$pullrequest_id" \
@@ -72,5 +72,5 @@ function pullrequest-set-deploy-status
 		"deploy_preview" \
 		"$state" \
 		"" \
-		"Deployment preview $(friendly-state '$state')" > /dev/null	
+		"Deployment preview $(friendly-state "$state")" > /dev/null	
 }
