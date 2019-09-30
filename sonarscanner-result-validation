@@ -4,26 +4,7 @@ source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
 source <(otc-task-include lib/sonar.sh)
-
-# Param pullrequest_id
-# Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
-# Param report_url
-function pullrequest-set-quality-gate-status
-{
-	local pullrequest_id="$1"
-	local state="$2"
-	local report_url="$3"
-	assert-not-empty pullrequest_id
-	assert-not-empty state
-	assert-not-empty report_url
-	assert-success vsts-pr-push-status \
-		"$pullrequest_id" \
-		"analysis" \
-		"sonarqube" \
-		"$state" \
-		"$report_url" \
-		"Sonarqube analysis $state" > /dev/null	
-}
+source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 SONARSCANNER_END_OUTPUT_FILE='sonarscanner-end-output'
 

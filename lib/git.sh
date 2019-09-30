@@ -133,3 +133,10 @@ function count-changed-lines
 	echo "Sum (added + removed): $total_lines" >&2
 	echo $total_lines
 }
+
+# Get the PR target branch name
+function get-base-branch
+{
+	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
+	echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///'
+}

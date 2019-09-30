@@ -9,26 +9,9 @@ source <(otc-task-include lib/deploy.sh)
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/console.sh)
+source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 ORGANIZATION="oleconsignado"
-
-# Param pullrequest_id
-# Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
-# Param report_url
-function pullrequest-set-deploy-status
-{
-	local pullrequest_id="$1"
-	local state="$2"
-	assert-not-empty pullrequest_id
-	assert-not-empty state
-	vsts-pr-push-status \
-		"$pullrequest_id" \
-		"ci" \
-		"deploy_preview" \
-		"$state" \
-		"" \
-		"Deployment preview $state" > /dev/null	
-}
 
 # Param pullrequest_id
 # Param commit_id

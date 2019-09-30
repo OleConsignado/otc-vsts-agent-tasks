@@ -6,44 +6,21 @@ source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
-
-# Param pullrequest_id
-# Param state (see https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull%20request%20statuses/create?view=azure-devops-rest-5.1#gitstatusstate)
-# Para description (optional)
-function pullrequest-set-size-status
-{
-	local pullrequest_id="$1"
-	local state="$2"
-	local description="$3"
-	assert-not-empty pullrequest_id
-	assert-not-empty state
-	vsts-pr-push-status \
-		"$pullrequest_id" \
-		"preconditions" \
-		"pr_size" \
-		"$state" \
-		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR" \
-		"$description" > /dev/null	
-}
-
-function get-base-branch
-{
-	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
-	echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///'
-}
+source <(otc-task-include lib/azure-pipelines-yaml-protection.sh)
+source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 # Param lines_threshold
 # Param lines_include_pattern (optional)
 # Param lines_exclude_pattern (optional)
 # Required environment variables:
-#  - SYSTEM_PULLREQUEST_TARGETBRANCH
-function main
+#  - SYSTEM_PULLREQUEST_PULLREQUESTID
+function size-validation
 {
+	azure-pipelines-yaml-protection
 	local lines_threshold=$1
 	local lines_include_pattern="$2"
 	local lines_exclude_pattern="$3"
 	assert-not-empty lines_threshold
-	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 	local lines_changed=$(count-changed-lines $(get-base-branch) \
@@ -60,23 +37,4 @@ function main
 	fi
 }
 
-function azure-pipelines-yaml-protection
-{
-	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
-	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	local diff_result_file=$(mktemp -t "pr-az-pl-yaml-protec-${pullrequest_id}-XXXXXXXX")
-	echo "Modified items with no filter:"
-	git-diff $(get-base-branch) $pullrequest_id > $diff_result_file
-	cat $diff_result_file
-	if cat $diff_result_file | \
-		egrep '^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+azure-pipelines\.yml$' > /dev/null 2>&1
-	then
-		red "******************************************************************"
-		red "* azure-pipelines.yml should not be modified in topic branches.  *"
-		red "******************************************************************"
-		exit 47 # Critical, pipeline must not procceed.
-	fi
-}
-
-azure-pipelines-yaml-protection
-main $@
+size-validation "$@"
