@@ -16,7 +16,6 @@ source <(otc-task-include lib/vsts-pr-statuses.sh)
 #  - SYSTEM_PULLREQUEST_PULLREQUESTID
 function size-validation
 {
-	azure-pipelines-yaml-protection
 	local lines_threshold=$1
 	local lines_include_pattern="$2"
 	local lines_exclude_pattern="$3"
@@ -37,4 +36,16 @@ function size-validation
 	fi
 }
 
+# Param pullrequest_id
+function reset-pr-statuses
+{
+	local pullrequest_id="$1"
+	assert-not-empty pullrequest_id
+	pullrequest-set-quality-gate-status $pullrequest_id "pending"
+	pullrequest-set-size-status $pullrequest_id "pending"
+	pullrequest-set-deploy-status $pullrequest_id "pending"
+}
+
+reset-pr-statuses
+azure-pipelines-yaml-protection
 size-validation "$@"
