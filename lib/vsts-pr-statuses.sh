@@ -54,7 +54,7 @@ function pullrequest-set-size-status
 		"preconditions" \
 		"pr_size" \
 		"$state" \
-		"https://arquitetura.oleconsignado.com.br/checklist-pull-request/#Tamanho-do-PR" \
+		"https://arquitetura.oleconsignado.com.br/validacao-de-tamanho-de-um-pull-request/" \
 		"$description" > /dev/null	
 }
 
