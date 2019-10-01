@@ -89,7 +89,7 @@ function main
 	fi
 
 	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
-	local deployed_releases_list=$(mktemp -t="deployed-release-$BUILD_BUILDID-XXXXXXXX")
+	local deployed_releases_list=$(mktemp -t "deployed-release-$BUILD_BUILDID-XXXXXXXX")
 	local pr_deploy_status='failed'
 
 	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" \

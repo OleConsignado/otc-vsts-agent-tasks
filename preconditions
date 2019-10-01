@@ -44,7 +44,6 @@ function reset-pr-statuses
 	pullrequest-set-size-status $pullrequest_id "notSet"
 	pullrequest-set-quality-gate-status $pullrequest_id "notSet"
 	pullrequest-set-deploy-status $pullrequest_id "notSet"
-	sleep 2
 }
 
 assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
