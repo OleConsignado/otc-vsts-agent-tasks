@@ -18,6 +18,9 @@ function friendly-state
 	elif [ "$state" = "pending" ]
 	then
 		state="in progress"
+	elif [ "$state" = "error" ]
+	then
+		state="marked as failed as build has failed"
 	fi
 	echo "$state"
 }

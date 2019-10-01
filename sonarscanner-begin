@@ -4,5 +4,17 @@ source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/console.sh)
 source <(otc-task-include lib/filesystem.sh)
 source <(otc-task-include lib/sonar.sh)
+source <(otc-task-include lib/vsts.sh)
+source <(otc-task-include lib/vsts-pr-statuses.sh)
+
+assert-not-empty BUILD_REASON
+assert-not-empty BUILD_SOURCESDIRECTORY
+assert-not-empty COMMON_TESTRESULTSDIRECTORY
+
+if [ "$BUILD_REASON" = "PullRequest" ]
+then
+	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
+	pullrequest-set-quality-gate-status $SYSTEM_PULLREQUEST_PULLREQUESTID "pending"
+fi
 
 sonar-scanner-begin "${BUILD_SOURCESDIRECTORY}/Source" "$COMMON_TESTRESULTSDIRECTORY"
