@@ -112,7 +112,7 @@ function reset-pr-statuses
 function should-set-status-as-failed
 {
 	local filename="$1"
-	egrep -v "^succeeded|failed$" "$filename" > /dev/null 2>&1 \
+	! egrep "^succeeded|failed$" "$filename" > /dev/null 2>&1 \
 		&& return 0
 	return 1
 }
