@@ -60,3 +60,83 @@ function commit-changes-and-tag
 	git remote rm authrepo > /dev/null 2>&1
 	git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1	
 }
+
+GIT_DIFF_CHECKOUT_ERROR=10
+
+# Param base
+# Param pullrequest_id
+function git-diff
+{
+	local base_branch="$1"
+	local pullrequest_id="$2"
+	assert-not-empty base_branch
+	assert-not-empty pullrequest_id
+	
+	if ! git checkout $base_branch > /dev/null 2>&1
+	then
+		echo "Error checking out $base_branch" >&2
+		return $GIT_DIFF_CHECKOUT_ERROR
+	fi
+	
+	if ! git checkout pull/$pullrequest_id/merge > /dev/null 2>&1	
+	then
+		echo "Error checking out pull/$pullrequest_id/merge" >&2
+		return $GIT_DIFF_CHECKOUT_ERROR
+	fi
+
+	git diff --numstat $base_branch
+}
+
+# Param base_branch
+# Param pullrequest_id
+# Param include_pattern (optional)
+# Param exclude_pattern (optional)
+# Return lines count on output 1
+# Information/Error message goes to output 2
+function count-changed-lines
+{
+	local base_branch="$1"
+	local pullrequest_id="$2"
+	local include_pattern="$3"
+	local exclude_pattern="$4"
+	assert-not-empty base_branch
+	assert-not-empty pullrequest_id
+	
+	if [ -z "$include_pattern" ]
+	then
+		include_pattern=".*"
+	fi
+
+	if [ -z "$exclude_pattern" ]
+	then
+		exclude_pattern="I hope there is no file named like this."
+	fi
+
+	# 'git diff --numstat' output is like '10   1   Path/To/File'
+	# replace leading '^' with '^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+' in order to make
+	# include/exclude pattern match only the 'Path/To/File' part.
+	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
+	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
+
+	local git_diff_result_file=$(mktemp -t "pr-diff-${pullrequest_id}-XXXXXXXX")
+	git-diff $base_branch $pullrequest_id | \
+		egrep "$include_pattern" | \
+		egrep -v "$exclude_pattern" > "$git_diff_result_file"
+	echo "Counting lines..." >&2
+	cat "$git_diff_result_file" >&2
+	local total_lines=$(cat "$git_diff_result_file" | awk '{n += $1+$2}; END{print n}')
+	rm -f "$git_diff_result_file"
+	if [ -z "$total_lines" ]
+	then
+		total_lines="0"
+	fi
+	echo "Sum (added + removed): $total_lines" >&2
+	echo $total_lines
+}
+
+# Get the PR target branch name
+function get-base-branch
+{
+	assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
+	echo "$SYSTEM_PULLREQUEST_TARGETBRANCH" | sed 's/^refs\/heads\///'
+}

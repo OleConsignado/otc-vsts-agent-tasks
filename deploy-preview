@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 source <(otc-task-include lib/filesystem.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/dotnet.sh)
@@ -10,6 +8,8 @@ source <(otc-task-include lib/helm.sh)
 source <(otc-task-include lib/deploy.sh)
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
+source <(otc-task-include lib/console.sh)
+source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 ORGANIZATION="oleconsignado"
 
@@ -19,7 +19,7 @@ ORGANIZATION="oleconsignado"
 # Param release_name
 # Required environment variables:
 #   - SYSTEM_PULLREQUEST_SOURCEREPOSITORYURI
-function publish_deploy_link_on_pr_feed
+function publish-deploy-link-on-pr-feed
 {
 	local pullrequest_id=$1
 	local commit_id=$2
@@ -44,8 +44,6 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
 	vsts-pull-request-comment-change-status $pullrequest_id $comment_id 4 # 4 = closed
 }
 
-DEPLOY_MAIN_MISS_DEPLOY_FAILED=3
-
 # Param namespace
 # Param configuration
 # Required environment variables:
@@ -68,6 +66,7 @@ function main
 
 	local is_pullrequest=false
 	local pullrequest_id=''
+	
 
 	if [ "$BUILD_REASON" = "PullRequest" ]
 	then
@@ -79,39 +78,54 @@ function main
 
 	local artifact_suffix=''
 	local tag=''
-
+	local pr_deploy_status='pending'
+	
 	if $is_pullrequest
 	then
+		pullrequest-set-deploy-preview-status \
+			"$pullrequest_id" \
+			"$pr_deploy_status"		
 		artifact_suffix="-eph-pr$pullrequest_id"
 		tag="$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | \
 			egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
 	else
 		tag="v$BUILD_BUILDID"
-		prepare-local-repo-for-changes
+		assert-success prepare-local-repo-for-changes
 	fi
 
 	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
-	local deployed_releases_list=$(mktemp --suffix="dep-rel-$BUILD_BUILDID")
+	local deployed_releases_list=$(mktemp -t "deployed-release-$BUILD_BUILDID-XXXXXXXX")
+	pr_deploy_status='failed'
 
-	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" "$artifact_suffix" "$deployed_releases_list"
+	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" \
+			"$artifact_suffix" > $deployed_releases_list
 	then
 		if $is_pullrequest
 		then
+			pr_deploy_status='succeeded'
+
 			for release_name in $(cat "$deployed_releases_list")
 			do		
-				publish_deploy_link_on_pr_feed $pullrequest_id \
-					$SYSTEM_PULLREQUEST_SOURCECOMMITID \
-					$namespace \
-					$release_name
+				publish-deploy-link-on-pr-feed \
+					"$pullrequest_id" \
+					"$SYSTEM_PULLREQUEST_SOURCECOMMITID" \
+					"$namespace" \
+					"$release_name"
 			done
 
 			rm "$deployed_releases_list"
 		else
-			commit-changes-and-tag "$tag"
+			assert-success commit-changes-and-tag "$tag"
 		fi
-	else
-		return $DEPLOY_MAIN_MISS_DEPLOY_FAILED
+	fi
+
+	if $is_pullrequest
+	then
+		# push deploy status to pr
+		assert-success pullrequest-set-deploy-preview-status \
+			"$pullrequest_id" \
+			"$pr_deploy_status"
 	fi
 }
 
-main $@
+main "$@"
