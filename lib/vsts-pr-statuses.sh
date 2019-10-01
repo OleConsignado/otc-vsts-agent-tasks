@@ -14,7 +14,7 @@ function friendly-state
 		state="queued"
 	elif [ "$state" = "pending" ]
 	then
-		state="running"
+		state="in progress"
 	fi
 	echo "$state"
 }
@@ -36,6 +36,8 @@ function pullrequest-set-quality-gate-status
 		"$state" \
 		"$report_url" \
 		"Sonarqube analysis $(friendly-state "$state")" > /dev/null	
+
+	echo "$state" > "quality_status_state"
 }
 
 # Param pullrequest_id
@@ -64,11 +66,13 @@ function pullrequest-set-size-status
 		"$state" \
 		"https://arquitetura.oleconsignado.com.br/validacao-de-tamanho-de-um-pull-request/" \
 		"$description" > /dev/null	
+
+	echo "$state" > "size_status_state"
 }
 
 # Param pullrequest_id
 # Param state
-function pullrequest-set-deploy-status
+function pullrequest-set-deploy-preview-status
 {
 	local pullrequest_id="$1"
 	local state="$2"
@@ -81,4 +85,6 @@ function pullrequest-set-deploy-status
 		"$state" \
 		"" \
 		"Deployment preview $(friendly-state "$state")" > /dev/null	
+
+	echo "$state" > "deploy_preview_status_state"
 }

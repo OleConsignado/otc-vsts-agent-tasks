@@ -82,7 +82,7 @@ function main
 	
 	if $is_pullrequest
 	then
-		pullrequest-set-deploy-status \
+		pullrequest-set-deploy-preview-status \
 			"$pullrequest_id" \
 			"$pr_deploy_status"		
 		artifact_suffix="-eph-pr$pullrequest_id"
@@ -122,7 +122,7 @@ function main
 	if $is_pullrequest
 	then
 		# push deploy status to pr
-		assert-success pullrequest-set-deploy-status \
+		assert-success pullrequest-set-deploy-preview-status \
 			"$pullrequest_id" \
 			"$pr_deploy_status"
 	fi

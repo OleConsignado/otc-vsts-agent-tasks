@@ -40,7 +40,7 @@ function reset-pr-statuses
 	assert-not-empty pullrequest_id
 	pullrequest-set-size-status "$pullrequest_id" "notSet"
 	pullrequest-set-quality-gate-status "$pullrequest_id" "notSet"
-	pullrequest-set-deploy-status "$pullrequest_id" "notSet"
+	pullrequest-set-deploy-preview-status "$pullrequest_id" "notSet"
 }
 
 # Param pullrequest_id
