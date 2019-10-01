@@ -96,7 +96,7 @@ function pullrequest-set-deploy-preview-status
 		"deploy_preview" \
 		"$state" \
 		"" \
-		"Deployment preview $(friendly-state "$state")" > /dev/null	
+		"Deploy preview $(friendly-state "$state")" > /dev/null	
 
 	echo "$state" > "$DEPLOY_PREVIEW_STATUS_STATE_FILE"
 }
