@@ -37,18 +37,23 @@ function pullrequest-set-quality-gate-status
 
 # Param pullrequest_id
 # Param state 
-# Para description (optional)
+# Param lines_changed (optional)
+# Param lines_threshold (optional)
 function pullrequest-set-size-status
 {
 	local pullrequest_id="$1"
 	local state="$2"
-	local description="$3"
+	local lines_changed="$3"
+	local lines_threshold="$4"
 	assert-not-empty pullrequest_id
 	assert-not-empty state
-	if [ -z "$description" ]
+	local description="Size validation $(friendly-state "$state")"
+
+	if ! [ -z "$lines_changed" ]
 	then
-		description="Size validation $(friendly-state "$state")"
+		description="$description (actual size $lines_changed, threshold $lines_threshold)"
 	fi
+	
 	vsts-pr-push-status \
 		"$pullrequest_id" \
 		"preconditions" \

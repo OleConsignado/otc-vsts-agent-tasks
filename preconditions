@@ -24,16 +24,13 @@ function size-validation
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 	local lines_changed=$(count-changed-lines $(get-base-branch) \
 		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
+	local status='succeeded'
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
-		pullrequest-set-size-status "$pullrequest_id" "failed" \
-			"Size validation failed (actual size $lines_changed, threshold $lines_threshold)"
+		status='failed'		
 		red "Pull request size ($lines_changed lines) exceeds threshold ($lines_threshold)."
-	else
-		pullrequest-set-size-status "$pullrequest_id" "succeeded" \
-			"Size validation succeeded (actual size $lines_changed, threshold $lines_threshold)"
-		green "Pull Request size validation succeeded."
 	fi
+	pullrequest-set-size-status "$pullrequest_id" "$status" "$lines_changed" "$lines_threshold"
 }
 
 # Param pullrequest_id
@@ -41,12 +38,23 @@ function reset-pr-statuses
 {
 	local pullrequest_id="$1"
 	assert-not-empty pullrequest_id
-	pullrequest-set-size-status $pullrequest_id "notSet"
-	pullrequest-set-quality-gate-status $pullrequest_id "notSet"
-	pullrequest-set-deploy-status $pullrequest_id "notSet"
+	pullrequest-set-size-status "$pullrequest_id" "notSet"
+	pullrequest-set-quality-gate-status "$pullrequest_id" "notSet"
+	pullrequest-set-deploy-status "$pullrequest_id" "notSet"
+}
+
+# Param pullrequest_id
+function show-modified-items
+{
+	local pullrequest_id="$1"
+	assert-not-empty pullrequest_id
+	echo "Modified items without filter:"
+	echo "Add	Rem"
+	git-diff $(get-base-branch) "$pullrequest_id"	
 }
 
 assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 reset-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
+show-modified-items $SYSTEM_PULLREQUEST_PULLREQUESTID
 azure-pipelines-yaml-protection
 size-validation "$@"
