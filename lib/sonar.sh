@@ -1,6 +1,6 @@
-#---------------------------------
-# Depends on assert.sh; console.sh
-#---------------------------------
+#------------------------------------------------
+# Depends on assert.sh; console.sh; filesystem.sh
+#------------------------------------------------
 
 SONAR_ANALYSIS_VALIDATION_SONAR_API_STATUS_ERROR=95
 SONAR_ANALYSIS_VALIDATION_SONAR_API_RESULT_ERROR=96
@@ -123,4 +123,65 @@ function sonar-analysis-validation
 	rm -f $sonar_task_result_output_file > /dev/null 2>&1
 
 	return $return_code
+}
+
+SONAR_PR_SCANNER_BEGIN_SOURCE_DIR_NOT_FOUND=34
+SONAR_PR_SCANNER_BEGIN_TEST_RESULTS_DIR_NOT_FOUND=35
+
+# Param source_directory
+# Param test_results_directory
+# Required environment variables
+#  - SONARQUBE_HOST
+#  - SONARQUBE_USERKEY
+#  - BUILD_REPOSITORY_URI
+#  - BUILD_REASON
+#  - If BUILD_REASON = PullRequest
+#    - SYSTEM_PULLREQUEST_SOURCEBRANCH
+#    - SYSTEM_PULLREQUEST_TARGETBRANCH
+function sonar-scanner-begin
+{
+	local source_directory="$1" #"${BUILD_SOURCESDIRECTORY}/Source"
+	local test_results_directory="$2" #COMMON_TESTRESULTSDIRECTORY
+	assert-not-empty source_directory
+	assert-not-empty test_results_directory
+	directory-exists "$source_directory" || return $SONAR_PR_SCANNER_BEGIN_SOURCE_DIR_NOT_FOUND
+	directory-exists "$test_results_directory" || return $SONAR_PR_SCANNER_BEGIN_TEST_RESULTS_DIR_NOT_FOUND
+	assert-not-empty BUILD_REASON
+	assert-not-empty SONARQUBE_HOST
+	assert-not-empty SONARQUBE_USERKEY
+	assert-not-empty BUILD_REPOSITORY_URI
+	local is_pullrequest=false
+	if [ "$BUILD_REASON" = "PullRequest" ]
+	then
+		is_pullrequest=true
+	fi
+	local sonar_projectkey=$(find "$source_directory" -name *.sln | egrep -o '[^/]+.sln$' | sed s/\.sln//)
+	local coverage_exclusions="**/*Exception.cs"
+	for i in $(find "$source_directory" -name *.csproj); 
+	do 
+		if grep -Pzlv "<DebugType *>[\r\n\t ]*Full[\r\n\t ]*</DebugType>" $i > /dev/null 2>&1 
+		then 
+			coverage_exclusions="$coverage_exclusions,**/$(basename $(dirname $i))/**/*"
+		fi 
+	done
+	local sonarscanner_begin_args="/key:$sonar_projectkey /d:sonar.host.url=$SONARQUBE_HOST \
+	/d:sonar.cs.opencover.reportsPaths=$test_results_directory/*.opencover.xml \
+	/d:sonar.login=$SONARQUBE_USERKEY \
+	/d:sonar.links.scm=$BUILD_REPOSITORY_URI \
+	/d:sonar.links.homepage=$BUILD_REPOSITORY_URI \
+	/d:sonar.coverage.exclusions=$coverage_exclusions \
+	/v:1"
+	if $is_pullrequest
+	then
+		assert-not-empty SYSTEM_PULLREQUEST_SOURCEBRANCH
+		assert-not-empty SYSTEM_PULLREQUEST_TARGETBRANCH
+		local pullrequest_branch=$(echo $SYSTEM_PULLREQUEST_SOURCEBRANCH | sed 's/^refs\/heads\///')
+		local pullrequest_base=$(echo $SYSTEM_PULLREQUEST_TARGETBRANCH | sed 's/^refs\/heads\///')
+		sonarscanner_begin_args="$sonarscanner_begin_args \
+				/d:sonar.branch.target=$pullrequest_base \
+				/d:sonar.branch.name=$pullrequest_branch"
+	fi
+	export MSYS2_ARG_CONV_EXCL="*"
+	assert-success dotnet sonarscanner begin $sonarscanner_begin_args
+	unset MSYS2_ARG_CONV_EXCL
 }

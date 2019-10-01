@@ -18,6 +18,9 @@ function friendly-state
 	elif [ "$state" = "pending" ]
 	then
 		state="in progress"
+	elif [ "$state" = "error" ]
+	then
+		state="marked as failed as build has failed"
 	fi
 	echo "$state"
 }
@@ -93,7 +96,7 @@ function pullrequest-set-deploy-preview-status
 		"deploy_preview" \
 		"$state" \
 		"" \
-		"Deployment preview $(friendly-state "$state")" > /dev/null	
+		"Deploy preview $(friendly-state "$state")" > /dev/null	
 
 	echo "$state" > "$DEPLOY_PREVIEW_STATUS_STATE_FILE"
 }

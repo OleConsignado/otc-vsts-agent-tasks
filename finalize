@@ -6,4 +6,4 @@ source <(otc-task-include lib/console.sh)
 source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
-finalize-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
+! finalize-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID

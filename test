@@ -10,7 +10,7 @@ do
   echo "Testing '$PROJECT_NAME' ..."
   /root/.dotnet/tools/coverlet "$TEST_DLL_FULLPATH" \
     --format "opencover" \
-  	--output "$PROJECT_NAME.opencover.xml" \
+  	--output "$COMMON_TESTRESULTSDIRECTORY/$PROJECT_NAME.opencover.xml" \
   	--target "dotnet" \
   	--targetargs "test $TEST_PROJ --no-build"
 # https://github.com/tonerdo/coverlet#excluding-from-coverage
