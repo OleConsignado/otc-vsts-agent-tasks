@@ -66,6 +66,7 @@ function main
 
 	local is_pullrequest=false
 	local pullrequest_id=''
+	
 
 	if [ "$BUILD_REASON" = "PullRequest" ]
 	then
@@ -77,9 +78,13 @@ function main
 
 	local artifact_suffix=''
 	local tag=''
-
+	local pr_deploy_status='pending'
+	
 	if $is_pullrequest
 	then
+		pullrequest-set-deploy-status \
+			"$pullrequest_id" \
+			"$pr_deploy_status"		
 		artifact_suffix="-eph-pr$pullrequest_id"
 		tag="$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | \
 			egrep -o '^[0-9a-f]{8}')-$BUILD_BUILDID"
@@ -90,7 +95,7 @@ function main
 
 	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
 	local deployed_releases_list=$(mktemp -t "deployed-release-$BUILD_BUILDID-XXXXXXXX")
-	local pr_deploy_status='failed'
+	pr_deploy_status='failed'
 
 	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" \
 			"$artifact_suffix" > $deployed_releases_list

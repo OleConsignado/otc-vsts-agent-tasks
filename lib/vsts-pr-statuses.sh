@@ -11,7 +11,10 @@ function friendly-state
 	assert-not-empty state
 	if [ "$state" = "notSet" ]
 	then
-		state="pending"
+		state="queued"
+	elif [ "$state" = "pending" ]
+	then
+		state="running"
 	fi
 	echo "$state"
 }
