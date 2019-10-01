@@ -38,7 +38,7 @@ function deploy
 		local project_dir=$(dirname "$helm_dir")
 		local docker_image_full_name_and_tag="$ORGANIZATION/$chart_name:$tag"
 
-		assert-success dotnet-publish "$dotnet_configuration" "$project_dir" "$build_output_dir"	
+		assert-success dotnet-publish "$dotnet_configuration" "$project_dir" "$build_output_dir" >&2
 		
 		# Create/replace version file with tag as content 
 		echo "$tag" > "${build_output_dir}/version"
