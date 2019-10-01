@@ -47,6 +47,5 @@ assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 reset-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
 show-modified-items $SYSTEM_PULLREQUEST_PULLREQUESTID
 azure-pipelines-yaml-protection
-exit 1
 size-validation "$@"
 
