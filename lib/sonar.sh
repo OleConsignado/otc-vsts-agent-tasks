@@ -147,7 +147,6 @@ function sonar-scanner-begin
 	directory-exists "$source_directory" || return $SONAR_PR_SCANNER_BEGIN_SOURCE_DIR_NOT_FOUND
 	directory-exists "$test_results_directory" || return $SONAR_PR_SCANNER_BEGIN_TEST_RESULTS_DIR_NOT_FOUND
 	assert-not-empty BUILD_REASON
-	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 	assert-not-empty SONARQUBE_HOST
 	assert-not-empty SONARQUBE_USERKEY
 	assert-not-empty BUILD_REPOSITORY_URI
