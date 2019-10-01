@@ -1,71 +1,8 @@
 #!/bin/bash
 
-set -e
+source <(otc-task-include lib/assert.sh)
+source <(otc-task-include lib/console.sh)
+source <(otc-task-include lib/filesystem.sh)
+source <(otc-task-include lib/sonar.sh)
 
-if [ -z "$SONARQUBE_HOST" ]
-then
-  echo "Missing SONARQUBE_HOST environment variable."
-  exit 1
-fi
-
-if [ -z "$SONARQUBE_USERKEY" ]
-then
-  echo "Missing SONARQUBE_USERKEY environment variable."
-  exit 1
-fi
-
-SONAR_BRANCH_MASTER=false
-
-if [ ! -z "$1" ]
-then
-	if [ "$1" = "--sonar-branch-master" ]
-	then
-		SONAR_BRANCH_MASTER=true
-	else
-		echo "Invalid argument $1"
-		exit 57
-	fi
-fi
-
-PULLREQUEST_ID="PR-$SYSTEM_PULLREQUEST_PULLREQUESTID" # -$(echo $SYSTEM_PULLREQUEST_SOURCECOMMITID | egrep -o '^[0-9a-f]{8}')"
-#PR_URL="${ENDPOINT_URL_SYSTEMVSSCONNECTION}_git/$SYSTEM_TEAMPROJECT/pullrequest/$SYSTEM_PULLREQUEST_PULLREQUESTID"
-LINKS_HOMEPAGE="${ENDPOINT_URL_SYSTEMVSSCONNECTION}${SYSTEM_TEAMPROJECT}"
-SONARQUBE_PROJECTKEY=$(find ./Source -name *.sln | egrep -o '[^/]+.sln$' | sed s/\.sln//)
-COVERAGE_EXCLUSIONS="**/*Exception.cs"
-
-for i in $(find -name *.csproj); 
-do 
-	if grep -Pzlv "<DebugType *>[\r\n\t ]*Full[\r\n\t ]*</DebugType>" $i > /dev/null 2>&1 
-	then 
-		COVERAGE_EXCLUSIONS="$COVERAGE_EXCLUSIONS,**/$(basename $(dirname $i))/**/*"
-	fi 
-done
-
-PULLREQUEST_BRANCH=$(echo $SYSTEM_PULLREQUEST_SOURCEBRANCH | sed 's/^refs\/heads\///')
-PULLREQUEST_BASE=$(echo $SYSTEM_PULLREQUEST_TARGETBRANCH | sed 's/^refs\/heads\///')
-
-SONARSCANNER_BEGIN_ARGS="/key:$SONARQUBE_PROJECTKEY /d:sonar.host.url=$SONARQUBE_HOST \
-/d:sonar.cs.opencover.reportsPaths=$(pwd)/*.opencover.xml \
-/d:sonar.login=$SONARQUBE_USERKEY \
-/d:sonar.links.scm=$BUILD_REPOSITORY_URI \
-/d:sonar.links.homepage=$LINKS_HOMEPAGE \
-/d:sonar.coverage.exclusions=$COVERAGE_EXCLUSIONS"
-
-if ! $SONAR_BRANCH_MASTER
-then
-	SONARSCANNER_BEGIN_ARGS="$SONARSCANNER_BEGIN_ARGS \
-/d:sonar.branch.target=$PULLREQUEST_BASE \
-/d:sonar.branch.name=$PULLREQUEST_BRANCH \
-/v:1"
-else
-	SONARSCANNER_BEGIN_ARGS="$SONARSCANNER_BEGIN_ARGS \
-/v:1" # v$BUILD_BUILDID
-fi
-#/d:sonar.pullrequest.branch=$PULLREQUEST_BRANCH \
-#/d:sonar.pullrequest.key=$SYSTEM_PULLREQUEST_PULLREQUESTID \
-#/d:sonar.pullrequest.base=$PULLREQUEST_BASE
-
-
-export MSYS2_ARG_CONV_EXCL="*"
-dotnet sonarscanner begin $SONARSCANNER_BEGIN_ARGS
-unset MSYS2_ARG_CONV_EXCL
+sonar-scanner-begin "${BUILD_SOURCESDIRECTORY}/Source" "$COMMON_TESTRESULTSDIRECTORY"
