@@ -72,8 +72,8 @@ function git-diff-prepare
 	assert-not-empty base_branch
 	local git_branch_result=$(mktemp -t git-diff-prepare-XXXXXX)
 	git branch > $git_branch_result
-	# detached commit
-	local current_branch=$(cat $git_branch_result | grep -Po '^\* \(HEAD detached at \K[a-f0-9]{6,}(?=\))')
+	# detached state
+	local current_branch=$(cat $git_branch_result | grep -Po '^\* \(HEAD detached at \K[A-Za-z0-9/]+(?=\))')
 	if [ -z "$current_branch" ] # probably at a regular branch
 	then
 		current_branch=$(cat $git_branch_result | grep -Po '^\*\s*\K.*')
