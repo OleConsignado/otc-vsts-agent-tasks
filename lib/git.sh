@@ -123,7 +123,8 @@ function count-changed-lines
 	echo "count-changed-lines - deletions: $deletions" >&2
 	local total_lines=$(( $insertions + $deletions ))
 	echo "count-changed-lines - total: $total_lines" >&2
-	local ignored_lines=$(git diff $base_branch | egrep -c "$ignore_lines_pattern") #"^\+\s*(\/\/.*|)$"
+	# ignored_lines is usefull for remove comment and empty lines. C# example: "^[+-]\s*(\/\/.*|)$" 
+	local ignored_lines=$(git diff $base_branch -- $diff_filter_args | egrep -c "$ignore_lines_pattern") 
 	if [ -z "$ignored_lines" ]
 	then
 		ignored_lines=0
