@@ -63,75 +63,73 @@ function commit-changes-and-tag
 
 GIT_DIFF_CHECKOUT_ERROR=10
 
+
 # Param base
 # Param pullrequest_id
-function git-diff
+function git-diff-prepare
 {
 	local base_branch="$1"
-	local pullrequest_id="$2"
 	assert-not-empty base_branch
-	assert-not-empty pullrequest_id
-	
+	local git_branch_result=$(mktemp -t git-diff-prepare-XXXXXX)
+	git branch > $git_branch_result
+	# detached commit
+	local current_branch=$(cat $git_branch_result | grep -Po '^\* \(HEAD detached at \K[a-f0-9]{6,}(?=\))')
+	if [ -z "$current_branch" ] # probably at a regular branch
+	then
+		current_branch=$(cat $git_branch_result | grep -Po '^\*\s*\K.*')
+	fi
+	rm -f $git_branch_result > /dev/null 2>&1
 	if ! git checkout $base_branch > /dev/null 2>&1
 	then
 		echo "Error checking out $base_branch" >&2
 		return $GIT_DIFF_CHECKOUT_ERROR
 	fi
 	
-	if ! git checkout pull/$pullrequest_id/merge > /dev/null 2>&1	
+	if ! git checkout "$current_branch" > /dev/null 2>&1	
 	then
-		echo "Error checking out pull/$pullrequest_id/merge" >&2
+		echo "Error checking out $current_branch" >&2
 		return $GIT_DIFF_CHECKOUT_ERROR
 	fi
-
-	git diff --numstat $base_branch
 }
 
 # Param base_branch
-# Param pullrequest_id
-# Param include_pattern (optional)
-# Param exclude_pattern (optional)
+# Param ignore_lines_pattern
+# Param diff_filter_args (--) ...
 # Return lines count on output 1
 # Information/Error message goes to output 2
 function count-changed-lines
 {
 	local base_branch="$1"
-	local pullrequest_id="$2"
-	local include_pattern="$3"
-	local exclude_pattern="$4"
+	local ignore_lines_pattern="$2"
 	assert-not-empty base_branch
-	assert-not-empty pullrequest_id
-	
-	if [ -z "$include_pattern" ]
+	assert-not-empty ignore_lines_pattern
+	shift 2
+	local diff_filter_args="$@"
+	assert-success git-diff-prepare "$base_branch"
+	echo "count-changed-lines - filter: $diff_filter_args" >&2
+	local diff_shortstat=$(git diff --shortstat "$base_branch" -- $diff_filter_args)
+	echo "count-changed-lines - diff_shortstat: $diff_shortstat" >&2
+	local insertions=$(echo $diff_shortstat | grep -Po '\K[0-9]+(?= insertions?)')
+	local deletions=$(echo $diff_shortstat | grep -Po '\K[0-9]+(?= deletions?)')
+	if [ -z "$insertions" ]
 	then
-		include_pattern=".*"
+		insertions=0
 	fi
-
-	if [ -z "$exclude_pattern" ]
+	if [ -z "$deletions" ]
 	then
-		exclude_pattern="I hope there is no file named like this."
+		deletions=0
 	fi
-
-	# 'git diff --numstat' output is like '10   1   Path/To/File'
-	# replace leading '^' with '^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+' in order to make
-	# include/exclude pattern match only the 'Path/To/File' part.
-	include_pattern=$(echo "$include_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
-	exclude_pattern=$(echo "$exclude_pattern" | sed 's/^\^/^[0-9]+[ '$'\t]+[0-9]+[ '$'\t]+/')
-
-	local git_diff_result_file=$(mktemp -t "pr-diff-${pullrequest_id}-XXXXXXXX")
-	git-diff $base_branch $pullrequest_id | \
-		egrep "$include_pattern" | \
-		egrep -v "$exclude_pattern" > "$git_diff_result_file"
-	echo "Counting lines..." >&2
-	cat "$git_diff_result_file" >&2
-	local total_lines=$(cat "$git_diff_result_file" | awk '{n += $1+$2}; END{print n}')
-	rm -f "$git_diff_result_file"
-	if [ -z "$total_lines" ]
+	echo "count-changed-lines - insertions: $insertions" >&2
+	echo "count-changed-lines - deletions: $deletions" >&2
+	local total_lines=$(( $insertions + $deletions ))
+	echo "count-changed-lines - total: $total_lines" >&2
+	local ignored_lines=$(git diff $base_branch | egrep -c "$ignore_lines_pattern") #"^\+\s*(\/\/.*|)$"
+	if [ -z "$ignored_lines" ]
 	then
-		total_lines="0"
+		ignored_lines=0
 	fi
-	echo "Sum (added + removed): $total_lines" >&2
-	echo $total_lines
+	echo "count-changed-lines - ignored_lines: $ignored_lines" >&2
+	echo $(( $total_lines - $ignored_lines ))
 }
 
 # Get the PR target branch name

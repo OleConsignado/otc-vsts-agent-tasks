@@ -2,13 +2,16 @@
 
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
-source <(otc-task-include lib/vsts.sh)
-source <(otc-task-include lib/console.sh)
-source <(otc-task-include lib/azure-pipelines-yaml-protection.sh)
-source <(otc-task-include lib/vsts-pr-statuses.sh)
+#source <(otc-task-include lib/vsts.sh)
+#source <(otc-task-include lib/console.sh)
+#source <(otc-task-include lib/azure-pipelines-yaml-protection.sh)
+#source <(otc-task-include lib/vsts-pr-statuses.sh)
 
-pullrequest_id="$1"
-assert-not-empty pullrequest_id
-pullrequest-set-size-status "$pullrequest_id" "notSet"
-pullrequest-set-quality-gate-status "$pullrequest_id" "notSet"
-pullrequest-set-deploy-preview-status "$pullrequest_id" "notSet"
+#pullrequest_id="$1"
+#assert-not-empty pullrequest_id
+#pullrequest-set-size-status "$pullrequest_id" "notSet"
+#pullrequest-set-quality-gate-status "$pullrequest_id" "notSet"
+#pullrequest-set-deploy-preview-status "$pullrequest_id" "notSet"
+
+#count-changed-lines dev ":*.cs" ":(exclude)*Tests/*"
+"$@"

@@ -10,20 +10,22 @@ source <(otc-task-include lib/azure-pipelines-yaml-protection.sh)
 source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 # Param lines_threshold
-# Param lines_include_pattern (optional)
-# Param lines_exclude_pattern (optional)
+# Param ignore_lines_pattern
+# Param diff_filter_args (--) ...
 # Required environment variables:
 #  - SYSTEM_PULLREQUEST_PULLREQUESTID
 function size-validation
 {
-	local lines_threshold=$1
-	local lines_include_pattern="$2"
-	local lines_exclude_pattern="$3"
+	local lines_threshold="$1"
+	local ignore_lines_pattern="$2"
+	shift 2
+	local diff_filter_args="$@"
 	assert-not-empty lines_threshold
+	assert-not-empty ignore_lines_pattern
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 	local lines_changed=$(count-changed-lines $(get-base-branch) \
-		"$pullrequest_id" "$lines_include_pattern" "$lines_exclude_pattern")
+		"$ignore_lines_pattern" "$diff_filter_args")
 	local status='succeeded'
 	if [ "$lines_changed" -gt "$lines_threshold" ]
 	then
@@ -33,19 +35,17 @@ function size-validation
 	pullrequest-set-size-status "$pullrequest_id" "$status" "$lines_changed" "$lines_threshold"
 }
 
-# Param pullrequest_id
 function show-modified-items
 {
-	local pullrequest_id="$1"
-	assert-not-empty pullrequest_id
+	git-diff-prepare $(get-base-branch)
 	echo "Modified items without filter:"
-	echo "Add	Rem"
-	git-diff $(get-base-branch) "$pullrequest_id"	
+	echo "Add	Rem"	
+	git diff --numstat $(get-base-branch)
 }
 
 assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 reset-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
-show-modified-items $SYSTEM_PULLREQUEST_PULLREQUESTID
+show-modified-items
 azure-pipelines-yaml-protection
 size-validation "$@"
 
