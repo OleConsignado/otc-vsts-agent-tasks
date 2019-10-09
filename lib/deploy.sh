@@ -40,8 +40,8 @@ function deploy
 
 		assert-success dotnet-publish "$dotnet_configuration" "$project_dir" "$build_output_dir" >&2
 		
-		# Create/replace version file with tag as content 
-		echo "$tag" > "${build_output_dir}/version"
+		# Create/replace buildid file with tag as content 
+		echo "$tag" > "${build_output_dir}/buildid"
 		
 		assert-success docker-build "$build_output_dir" "$docker_image_full_name_and_tag" >&2
 
