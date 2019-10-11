@@ -30,6 +30,13 @@ function prepare-local-repo-for-changes
 	if [ "$last_commit" != "$BUILD_SOURCEVERSION" ]
 	then
 		echo "HEAD changed (expected $BUILD_SOURCEVERSION but $last_commit)"
+		echo
+		echo "******************************************************************************************"
+		echo "* É comum acontecer esse erro quando o branch sofre mudanca durante o processo de build. *"
+		echo "* Tente disparar um novo build. Caso o erro torne a acontecer, entre em contato com a    *"
+		echo "* equipe de arquitetura (antes, certifique-se que nao  houveram novos commits no branch  *"
+		echo "* durante a execucao do build).                                                          *"
+		echo "******************************************************************************************"
 		exit 10
 	fi
 	git config user.name "$BUILD_REQUESTEDFOR"

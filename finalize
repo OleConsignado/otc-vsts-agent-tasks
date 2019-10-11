@@ -6,4 +6,10 @@ source <(otc-task-include lib/console.sh)
 source <(otc-task-include lib/vsts-pr-statuses.sh)
 
 assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
-! finalize-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
+
+# flag create at deploy preview step that means the deploy 
+# preview failed in a regular way (not crashed)
+if ! [ -f "deploy-preview-regular-fail" ] 
+then
+	! finalize-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
+fi

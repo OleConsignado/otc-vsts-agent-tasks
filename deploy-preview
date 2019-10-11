@@ -125,6 +125,12 @@ function main
 		assert-success pullrequest-set-deploy-preview-status \
 			"$pullrequest_id" \
 			"$pr_deploy_status"
+
+		# finalize task will look for this file in order to determine if 
+		# deploy preview failed in a regurlar way (not crashed)
+		touch deploy-preview-regular-fail 
+
+		return 101
 	fi
 }
 
