@@ -174,19 +174,21 @@ function sonar-scanner-begin
 **/*Adapter/Clients/**/*Delete.cs,**/*Adapter/Clients/**/*PostResult.cs,\
 **/*Adapter/Clients/**/*GetResult.cs,**/*Adapter/Clients/**/*PutResult.cs,\
 **/*Adapter/Clients/**/*PatchResult.cs,**/*Adapter/Clients/**/*DeleteResult.cs,\
-**/*Adapter/Clients/*Post.cs,**/*Adapter/Clients/*Get.cs,**/*Adapter/Clients/*Put.cs,\
-**/*Adapter/Clients/*Patch.cs,**/*Adapter/Clients/*Delete.cs,\
-**/*Adapter/Clients/*PostResult.cs,**/*Adapter/Clients/*GetResult.cs,\
-**/*Adapter/Clients/*PutResult.cs,**/*Adapter/Clients/*PatchResult.cs,\
-**/*Adapter/Clients/*DeleteResult.cs,**/*.WebApi/Dtos/**/*Post.cs,\
-**/*.WebApi/Dtos/**/*Get.cs,**/*.WebApi/Dtos/**/*Put.cs,**/*.WebApi/Dtos/**/*Patch.cs,\
+**/*Adapter/Clients/**/*Dto.cs,**/*Adapter/Clients/*Post.cs,\
+**/*Adapter/Clients/*Get.cs,**/*Adapter/Clients/*Put.cs,**/*Adapter/Clients/*Patch.cs,\
+**/*Adapter/Clients/*Delete.cs,**/*Adapter/Clients/*PostResult.cs,\
+**/*Adapter/Clients/*GetResult.cs,**/*Adapter/Clients/*PutResult.cs,\
+**/*Adapter/Clients/*PatchResult.cs,**/*Adapter/Clients/*DeleteResult.cs,\
+**/*Adapter/Clients/*Dto.cs,**/*.WebApi/Dtos/**/*Post.cs,**/*.WebApi/Dtos/**/*Get.cs,\
+**/*.WebApi/Dtos/**/*Put.cs,**/*.WebApi/Dtos/**/*Patch.cs,\
 **/*.WebApi/Dtos/**/*Delete.cs,**/*.WebApi/Dtos/**/*PostResult.cs,\
 **/*.WebApi/Dtos/**/*GetResult.cs,**/*.WebApi/Dtos/**/*PutResult.cs,\
 **/*.WebApi/Dtos/**/*PatchResult.cs,**/*.WebApi/Dtos/**/*DeleteResult.cs,\
-**/*.WebApi/Dtos/*Post.cs,**/*.WebApi/Dtos/*Get.cs,**/*.WebApi/Dtos/*Put.cs,\
-**/*.WebApi/Dtos/*Patch.cs,**/*.WebApi/Dtos/*Delete.cs,**/*.WebApi/Dtos/*PostResult.cs,\
-**/*.WebApi/Dtos/*GetResult.cs,**/*.WebApi/Dtos/*PutResult.cs,\
-**/*.WebApi/Dtos/*PatchResult.cs,**/*.WebApi/Dtos/*DeleteResult.cs"
+**/*.WebApi/Dtos/**/*Dto.cs,**/*.WebApi/Dtos/*Post.cs,**/*.WebApi/Dtos/*Get.cs,\
+**/*.WebApi/Dtos/*Put.cs,**/*.WebApi/Dtos/*Patch.cs,**/*.WebApi/Dtos/*Delete.cs,\
+**/*.WebApi/Dtos/*PostResult.cs,**/*.WebApi/Dtos/*GetResult.cs,\
+**/*.WebApi/Dtos/*PutResult.cs,**/*.WebApi/Dtos/*PatchResult.cs,\
+**/*.WebApi/Dtos/*DeleteResult.cs,**/*.WebApi/Dtos/*Dto.cs"
 
 	local sonarscanner_begin_args="/key:$sonar_projectkey /d:sonar.host.url=$SONARQUBE_HOST \
 	/d:sonar.cs.opencover.reportsPaths=$test_results_directory/*.opencover.xml \
