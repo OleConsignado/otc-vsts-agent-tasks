@@ -150,13 +150,17 @@ function sonar-scanner-begin
 	assert-not-empty SONARQUBE_HOST
 	assert-not-empty SONARQUBE_USERKEY
 	assert-not-empty BUILD_REPOSITORY_URI
+	
 	local is_pullrequest=false
+
 	if [ "$BUILD_REASON" = "PullRequest" ]
 	then
 		is_pullrequest=true
 	fi
+
 	local sonar_projectkey=$(find "$source_directory" -name *.sln | egrep -o '[^/]+.sln$' | sed s/\.sln//)
 	local coverage_exclusions="**/*Exception.cs"
+	
 	for i in $(find "$source_directory" -name *.csproj); 
 	do 
 		if grep -Pzlv "<DebugType *>[\r\n\t ]*Full[\r\n\t ]*</DebugType>" $i > /dev/null 2>&1 
@@ -164,13 +168,37 @@ function sonar-scanner-begin
 			coverage_exclusions="$coverage_exclusions,**/$(basename $(dirname $i))/**/*"
 		fi 
 	done
+
+	local duplicated_exclusions="**/*Adapter/Clients/**/*Post.cs,**/*Adapter/Clients/**/*Get.cs,\
+**/*Adapter/Clients/**/*Put.cs,**/*Adapter/Clients/**/*Patch.cs,\
+**/*Adapter/Clients/**/*Delete.cs,**/*Adapter/Clients/**/*PostResult.cs,\
+**/*Adapter/Clients/**/*GetResult.cs,**/*Adapter/Clients/**/*PutResult.cs,\
+**/*Adapter/Clients/**/*PatchResult.cs,**/*Adapter/Clients/**/*DeleteResult.cs,\
+**/*Adapter/Clients/**/*Dto.cs,**/*Adapter/Clients/*Post.cs,\
+**/*Adapter/Clients/*Get.cs,**/*Adapter/Clients/*Put.cs,**/*Adapter/Clients/*Patch.cs,\
+**/*Adapter/Clients/*Delete.cs,**/*Adapter/Clients/*PostResult.cs,\
+**/*Adapter/Clients/*GetResult.cs,**/*Adapter/Clients/*PutResult.cs,\
+**/*Adapter/Clients/*PatchResult.cs,**/*Adapter/Clients/*DeleteResult.cs,\
+**/*Adapter/Clients/*Dto.cs,**/*.WebApi/Dtos/**/*Post.cs,**/*.WebApi/Dtos/**/*Get.cs,\
+**/*.WebApi/Dtos/**/*Put.cs,**/*.WebApi/Dtos/**/*Patch.cs,\
+**/*.WebApi/Dtos/**/*Delete.cs,**/*.WebApi/Dtos/**/*PostResult.cs,\
+**/*.WebApi/Dtos/**/*GetResult.cs,**/*.WebApi/Dtos/**/*PutResult.cs,\
+**/*.WebApi/Dtos/**/*PatchResult.cs,**/*.WebApi/Dtos/**/*DeleteResult.cs,\
+**/*.WebApi/Dtos/**/*Dto.cs,**/*.WebApi/Dtos/*Post.cs,**/*.WebApi/Dtos/*Get.cs,\
+**/*.WebApi/Dtos/*Put.cs,**/*.WebApi/Dtos/*Patch.cs,**/*.WebApi/Dtos/*Delete.cs,\
+**/*.WebApi/Dtos/*PostResult.cs,**/*.WebApi/Dtos/*GetResult.cs,\
+**/*.WebApi/Dtos/*PutResult.cs,**/*.WebApi/Dtos/*PatchResult.cs,\
+**/*.WebApi/Dtos/*DeleteResult.cs,**/*.WebApi/Dtos/*Dto.cs"
+
 	local sonarscanner_begin_args="/key:$sonar_projectkey /d:sonar.host.url=$SONARQUBE_HOST \
 	/d:sonar.cs.opencover.reportsPaths=$test_results_directory/*.opencover.xml \
 	/d:sonar.login=$SONARQUBE_USERKEY \
 	/d:sonar.links.scm=$BUILD_REPOSITORY_URI \
 	/d:sonar.links.homepage=$BUILD_REPOSITORY_URI \
 	/d:sonar.coverage.exclusions=$coverage_exclusions \
+	/d:sonar.cpd.exclusions=$duplicated_exclusions \
 	/v:1"
+
 	if $is_pullrequest
 	then
 		assert-not-empty SYSTEM_PULLREQUEST_SOURCEBRANCH
@@ -181,6 +209,7 @@ function sonar-scanner-begin
 				/d:sonar.branch.target=$pullrequest_base \
 				/d:sonar.branch.name=$pullrequest_branch"
 	fi
+
 	export MSYS2_ARG_CONV_EXCL="*"
 	assert-success dotnet sonarscanner begin $sonarscanner_begin_args
 	unset MSYS2_ARG_CONV_EXCL
