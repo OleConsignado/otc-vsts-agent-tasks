@@ -46,6 +46,7 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
 
 # Param namespace
 # Param configuration
+# Param base_dir (OPTIONAL - default "$BUILD_SOURCESDIRECTORY/Source")
 # Required environment variables:
 #   - BUILD_REASON
 #   - BUILD_BUILDID
@@ -57,6 +58,12 @@ function main
 {
 	local namespace=$1
 	local configuration=$2
+	local base_dir="$3"
+
+	if [ -z "$base_dir" ]
+	then
+		base_dir="$BUILD_SOURCESDIRECTORY/Source"
+	fi
 
 	assert-not-empty namespace
 	assert-not-empty configuration
@@ -93,11 +100,10 @@ function main
 		assert-success prepare-local-repo-for-changes
 	fi
 
-	local solution_dir="$BUILD_SOURCESDIRECTORY/Source"
 	local deployed_releases_list=$(mktemp -t "deployed-release-$BUILD_BUILDID-XXXXXXXX")
 	deploy_status='failed'
 
-	if deploy "$solution_dir" "$configuration" "$tag" "$namespace" \
+	if deploy "$base_dir" "$configuration" "$tag" "$namespace" \
 			"$artifact_suffix" > $deployed_releases_list
 	then
 		deploy_status='succeeded'
