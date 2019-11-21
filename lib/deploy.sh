@@ -56,7 +56,7 @@ function deploy
 			then
 				echo "found!" >&2
 				echo "Copying artifacts from '$project_dir' to '$build_output_dir'" >&2
-				cp -Rvp "$project_dir/." "$build_output_dir" >&2
+				rsync -rp --exclude=.git "$project_dir/." "$build_output_dir" >&2
 			else
 				echo "NOT found!" >&2
 				red "Nothing to publish." >&2
