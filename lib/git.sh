@@ -179,7 +179,7 @@ function count-changed-lines
 			"$comments_and_blank_lines_pattern" $diff_filter_args)', 
 		"raw": '$(count-changed-lines-helper "$base_branch" \
 			"$comments_and_blank_lines_pattern")'
-	}' | jq -M
+	}' | jq -M '.'
 }
 
 # Get the PR target branch name
