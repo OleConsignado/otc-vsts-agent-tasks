@@ -99,25 +99,15 @@ function git-diff-prepare
 	fi
 }
 
-# Param base_branch
-# Param ignore_lines_pattern
-# Param diff_filter_args (--) ...
-# Return lines count on output 1
-# Information/Error message goes to output 2
-function count-changed-lines
+# Param diff_shortstat_result_text
+function diff-shortstat-result-text-to-json
 {
-	local base_branch="$1"
-	local ignore_lines_pattern="$2"
-	assert-not-empty base_branch
-	assert-not-empty ignore_lines_pattern
-	shift 2
-	local diff_filter_args="$@"
-	assert-success git-diff-prepare "$base_branch"
-	echo "count-changed-lines - filter: $diff_filter_args" >&2
-	local diff_shortstat=$(git diff --shortstat "$base_branch" -- $diff_filter_args)
-	echo "count-changed-lines - diff_shortstat: $diff_shortstat" >&2
+	local diff_shortstat="$1"
+	assert-not-empty diff_shortstat
+
 	local insertions=$(echo $diff_shortstat | grep -Po '\K[0-9]+(?= insertions?)')
 	local deletions=$(echo $diff_shortstat | grep -Po '\K[0-9]+(?= deletions?)')
+
 	if [ -z "$insertions" ]
 	then
 		insertions=0
@@ -125,19 +115,71 @@ function count-changed-lines
 	if [ -z "$deletions" ]
 	then
 		deletions=0
-	fi
-	echo "count-changed-lines - insertions: $insertions" >&2
-	echo "count-changed-lines - deletions: $deletions" >&2
-	local total_lines=$(( $insertions + $deletions ))
-	echo "count-changed-lines - total: $total_lines" >&2
-	# ignored_lines is usefull for remove comment and empty lines. C# example: "^[+-]\s*(\/\/.*|)$" 
-	local ignored_lines=$(git diff $base_branch -- $diff_filter_args | egrep -c "$ignore_lines_pattern") 
-	if [ -z "$ignored_lines" ]
+	fi	
+
+	echo '
+	{ 
+		"insertions": '$insertions',
+		"deletions": '$deletions'
+	}'	
+}
+
+function count-changed-lines-helper
+{
+	local base_branch="$1"
+	local comments_and_blank_lines_pattern="$2"
+	assert-not-empty base_branch
+	assert-not-empty comments_and_blank_lines_pattern
+	shift 2
+	local diff_filter_args="$@"
+	assert-success git-diff-prepare "$base_branch"
+	local diff_shortstat=$(git diff --shortstat "$base_branch" -- $diff_filter_args)
+
+	local diff_shortstat_json=$(diff-shortstat-result-text-to-json \
+		"$diff_shortstat")
+
+	local comments_and_blank_lines=$(git diff $base_branch -- $diff_filter_args \
+		| egrep -c "$comments_and_blank_lines_pattern") 
+
+	if [ -z "$comments_and_blank_lines" ]
 	then
-		ignored_lines=0
+		comments_and_blank_lines=0
 	fi
-	echo "count-changed-lines - ignored_lines: $ignored_lines" >&2
-	echo $(( $total_lines - $ignored_lines ))
+	echo $diff_shortstat_json | \
+		jq -M ". + { comments_or_blank_lines: $comments_and_blank_lines }"
+}
+
+# Param base_branch
+# Param comments_and_blank_lines_pattern
+# Param diff_filter_args (--) ...
+# Return lines changed report, example:
+# {
+#   "filtered": {
+#     "insertions": 20,
+#     "deletions": 16,
+#     "comments_or_blank_lines": 4
+#   },
+#   "raw": {
+#     "insertions": 28,
+#     "deletions": 23,
+#     "comments_or_blank_lines": 4
+#   }
+# }
+function count-changed-lines
+{
+	local base_branch="$1"
+	local comments_and_blank_lines_pattern="$2"
+	assert-not-empty base_branch
+	assert-not-empty comments_and_blank_lines_pattern
+	shift 2
+	local diff_filter_args="$@"	
+	echo '
+	{ 
+		"filtered": '$(count-changed-lines-helper "$base_branch" \
+			"$comments_and_blank_lines_pattern" $diff_filter_args)', 
+		"raw": '$(count-changed-lines-helper "$base_branch" \
+			"$comments_and_blank_lines_pattern")'
+	}' | jq -M
 }
 
 # Get the PR target branch name
