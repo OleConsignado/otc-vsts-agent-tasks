@@ -146,7 +146,7 @@ function vsts-pr-update-properties
 	assert-not-empty payload
 	local repository_id=$(vsts-get-repoid-by-prid "$pullrequest_id")
 	vsts-request "PATCH" \
-		"https://dev.azure.com/{{organization}}/_apis/git/repositories/$repository_id/pullRequests/$pullrequest_id/properties?api-version=5.1-preview.1" \
+		"/_apis/git/repositories/$repository_id/pullRequests/$pullrequest_id/properties?api-version=5.1-preview.1" \
 		"$payload" \
 		"application/json-patch+json"
 }
