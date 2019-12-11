@@ -11,18 +11,24 @@ VSTS_REQUEST_FAIL=37
 # Param method
 # Param path 
 # Param payload (optional)
+# Param content_type (optional, default: application/json)
 function vsts-request
 {
 	local method="$1"
 	local path="$2"
 	local payload="$3"
+	local content_type="$4"
 	assert-not-empty SYSTEM_COLLECTIONURI
 	assert-not-empty VCS_TOKEN
 	assert-not-empty path
 	local url="$(echo $SYSTEM_COLLECTIONURI | sed 's/\/$//')$path"
 	local curl_output=$(mktemp -t "vsts-req-curl-XXXXXXXX")
+	if [ -z "$content_type" ]
+	then
+		content_type="application/json"
+	fi
 	local return_code=0
-	if ! curl --fail -s -u _:$VCS_TOKEN -d "$payload" -H "Content-Type: application/json" \
+	if ! curl --fail -s -u _:$VCS_TOKEN -d "$payload" -H "Content-Type: $content_type" \
 		-X "$method" "$url" -o $curl_output
 	then
 		echo "vsts-request failed while trying to '$method' '$url'" >&2
@@ -128,4 +134,19 @@ function vsts-pr-push-status
 	vsts-request "POST" \
 		"/_apis/git/repositories/$repository_id/pullRequests/$pullrequest_id/statuses?api-version=5.1-preview.1" \
 		"$payload"
+}
+
+# Param pullrequest_id
+# Param payload
+function vsts-pr-update-properties
+{
+	local pullrequest_id="$1"
+	local payload="$2"
+	assert-not-empty pullrequest_id
+	assert-not-empty payload
+	local repository_id=$(vsts-get-repoid-by-prid "$pullrequest_id")
+	vsts-rest "PATCH" \
+		"https://dev.azure.com/{{organization}}/_apis/git/repositories/$repository_id/pullRequests/$pullrequest_id/properties?api-version=5.1-preview.1" \
+		"$payload" \
+		"application/json-patch+json"
 }
