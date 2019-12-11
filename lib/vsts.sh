@@ -28,7 +28,7 @@ function vsts-request
 		content_type="application/json"
 	fi
 	local return_code=0
-	if ! curl --fail -s -u _:$VCS_TOKEN -d "$payload" -H "Content-Type: $content_type" \
+	if ! curl --fail -v -s -u _:$VCS_TOKEN -d "$payload" -H "Content-Type: $content_type" \
 		-X "$method" "$url" -o $curl_output
 	then
 		echo "vsts-request failed while trying to '$method' '$url'" >&2
