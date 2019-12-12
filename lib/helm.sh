@@ -171,7 +171,7 @@ function helm-deploy-validation
 	echo -n "Checking POD creation... " >&2
 	local pooling_attemps=0
 	local kubectl_labels_args="-l release=$helm_release_name,revision=$release_revision";
-	local kubectl_get_pod_cmd="kubectl -n $namespace get pod -l $kubectl_labels_args -ojson"
+	local kubectl_get_pod_cmd="kubectl -n $namespace get pod $kubectl_labels_args -ojson"
 
 	while : 
 		[ "$($kubectl_get_pod_cmd | jq -M '.items[0]')" = "null" ]
