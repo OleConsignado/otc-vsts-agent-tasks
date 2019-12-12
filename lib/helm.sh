@@ -298,15 +298,17 @@ function helm-deploy-validation
 			# TODO: improve log
 			red "Error while trying to start $helm_release_name" >&2
 			local kubectl_logs_cmd="kubectl -n $namespace logs -l release=$helm_release_name,revision=$release_revision"
+			echo "==== Current POD logs (kubectl logs):" >&2
 			if ! $kubectl_logs_cmd >&2
 			then
-				echo "Could not get container logs." >&2
-				echo "Trying to retrieve log of previous container (kubectl logs -p)" >&2
-				if ! $kubectl_logs_cmd -p >&2
-				then
-					red "Could not get container logs (neether current and previous)." >&2
-				fi
+				yellow "Could not get current POD logs." >&2
 			fi
+			echo "==== End of current POD logs; Previous POD logs (kubectl logs -p):" >&2
+			if ! $kubectl_logs_cmd -p >&2
+			then
+				yellow "Could not get previous POD logs." >&2
+			fi			
+			echo "==== End of previous POD logs" >&2
 		fi
 
 		helm delete $helm_release_name --purge >&2
