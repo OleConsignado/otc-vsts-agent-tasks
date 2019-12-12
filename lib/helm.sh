@@ -228,15 +228,23 @@ function helm-deploy-validation
 				pooling_attemps_step="CONTAINER_CREATING"
 
 				reason=$(echo $container_status | jq -Mr '.waiting.reason')
-				
-				echo "Waiting: $reason" >&2
 
-				if [ "$reason" = "CrashLoopBackOff" ]
+				if [ "$reason" = "ImagePullBackOff" ] || [ "$reason" = "ErrImagePull" ]
 				then
+					red "Deployment status is $reason, this means that docker failed while pulling the image. " >&2
+					red "Probably the image does not exists or appropriate credentials is missing." >&2
 					deploy_validation_completed=true
 					deploy_sucess=false
-				fi
+				else
+					echo "Waiting: $reason" >&2
 
+					if [ "$reason" = "CrashLoopBackOff" ]
+					then
+						deploy_validation_completed=true
+						deploy_sucess=false
+					fi
+
+				fi
 			elif [ "$(echo $container_status | jq -M '.running')" != "null" ] 
 			then
 				#echo $container_status | jq -M '.running'
@@ -289,13 +297,20 @@ function helm-deploy-validation
 		else
 			# TODO: improve log
 			red "Error while trying to start $helm_release_name" >&2
-			if ! kubectl -n $namespace logs -l release=$helm_release_name,revision=$release_revision -p >&2
+			local kubectl_logs_cmd="kubectl -n $namespace logs -l release=$helm_release_name,revision=$release_revision"
+			if ! $kubectl_logs_cmd >&2
 			then
-				echo "Could not get container logs."
+				echo "Could not get container logs." >&2
+				echo "Trying to retrieve log of previous container (kubectl logs -p)" >&2
+				if ! $kubectl_logs_cmd -p >&2
+				then
+					red "Could not get container logs (neether current and previous)." >&2
+				fi
 			fi
 		fi
 
 		helm delete $helm_release_name --purge >&2
+
 		return $HELM_DEPLOY_VALIDATION_POD_START_FAIL
 	fi
 

@@ -43,7 +43,7 @@ function deploy
 
 		# TODO: Look for decouple dotnet-publish from deploy
 
-		if ls *.csproj > /dev/null 2>&1 
+		if ls $project_dir/*.csproj > /dev/null 2>&1 
 		then
 			echo "found!" >&2
 			echo "As .csproj has found, publishing it to '$build_output_dir'" >&2
