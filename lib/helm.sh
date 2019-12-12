@@ -155,8 +155,8 @@ HELM_DEPLOY_VALIDATION_POD_START_FAIL=81
 # Param helm_release_name
 function helm-deploy-validation
 {
-	local namespace=$1
-	local helm_release_name=$2
+	local namespace="$1"
+	local helm_release_name="$2"
 	assert-not-empty namespace
 	assert-not-empty helm_release_name
 
@@ -170,7 +170,8 @@ function helm-deploy-validation
 
 	echo -n "Checking POD creation... " >&2
 	local pooling_attemps=0
-	local kubectl_get_pod_cmd="kubectl -n $namespace get pod -l release=$helm_release_name,revision=$release_revision -ojson"
+	local kubectl_labels_args="-l release=$helm_release_name,revision=$release_revision";
+	local kubectl_get_pod_cmd="kubectl -n $namespace get pod -l $kubectl_labels_args -ojson"
 
 	while : 
 		[ "$($kubectl_get_pod_cmd | jq -M '.items[0]')" = "null" ]
@@ -285,6 +286,7 @@ function helm-deploy-validation
 
 	if ! $deploy_sucess
 	then
+		local kubectl_describe_pod_cmd="kubectl -n $namespace describe pod $kubectl_labels_args"
 		if $pod_status_pending
 		then
 			red "Error while trying to start $helm_release_name." >&2
@@ -292,12 +294,13 @@ function helm-deploy-validation
 		elif ! $deploy_validation_completed
 		then
 			red "Could not validate deployment, the POD is taking a long time to get ready, should be something wrong on Kubernetes Cluster." >&2
-			echo "## POD details ##################################################" >&2
-			kubectl -n $namespace describe pod -l release=$helm_release_name,revision=$release_revision >&2
+			echo "==== POD details (kubectl describe pod):" >&2
+			$kubectl_describe_pod_cmd >&2
+			echo "==== End of POD details:" >&2
 		else
 			# TODO: improve log
 			red "Error while trying to start $helm_release_name" >&2
-			local kubectl_logs_cmd="kubectl -n $namespace logs -l release=$helm_release_name,revision=$release_revision"
+			local kubectl_logs_cmd="kubectl -n $namespace logs $kubectl_labels_args"
 			echo "==== Current POD logs (kubectl logs):" >&2
 			if ! $kubectl_logs_cmd >&2
 			then
@@ -308,7 +311,12 @@ function helm-deploy-validation
 			then
 				yellow "Could not get previous POD logs." >&2
 			fi			
-			echo "==== End of previous POD logs" >&2
+			echo "==== End of previous POD logs; POD details (kubectl describe pod):" >&2
+			if ! $kubectl_describe_pod_cmd >&2
+			then
+				red "Could not describe POD." >&2
+			fi
+			echo "==== End of POD details:" >&2
 		fi
 
 		helm delete $helm_release_name --purge >&2
