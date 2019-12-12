@@ -7,14 +7,16 @@ source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/console.sh)
 source <(otc-task-include lib/azure-pipelines-yaml-protection.sh)
+source <(otc-task-include lib/vsts-pr.sh)
 source <(otc-task-include lib/vsts-pr-statuses.sh)
+
 
 # Param lines_threshold
 # Param ignore_lines_pattern
 # Param diff_filter_args (--) ...
 # Required environment variables:
 #  - SYSTEM_PULLREQUEST_PULLREQUESTID
-function size-validation
+function capture-pr-size-and-perform-size-validation
 {
 	local lines_threshold="$1"
 	local ignore_lines_pattern="$2"
@@ -23,16 +25,27 @@ function size-validation
 	assert-not-empty lines_threshold
 	assert-not-empty ignore_lines_pattern
 	assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
-	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
-	local lines_changed=$(count-changed-lines $(get-base-branch) \
+	local pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID	
+	local changed_lines_report_json=$(count-changed-lines \
+		$(get-base-branch) \
 		"$ignore_lines_pattern" "$diff_filter_args")
+	echo -n "Changed lines details: "
+	echo $changed_lines_report_json
+	echo "Adding changed lines data to PR properties collection ..."
+	pullrequest-update-properties "$pullrequest_id" "$changed_lines_report_json"
+	local changed_lines=$(echo $changed_lines_report_json | \
+		jq -M '.filtered.insertions + .filtered.deletions - .filtered.comments_or_blank_lines')
+	# Performing size validation in order to define as PR status
+	echo "Considering (.filtered.insertions + .filtered.deletions - .filtered.comments_or_blank_lines) (= $changed_lines)"
 	local status='succeeded'
-	if [ "$lines_changed" -gt "$lines_threshold" ]
+	if [ "$changed_lines" -gt "$lines_threshold" ]
 	then
 		status='failed'		
-		red "Pull request size ($lines_changed lines) exceeds threshold ($lines_threshold)."
+		red "Pull request size ($changed_lines lines) exceeds threshold ($lines_threshold)."
+	else
+		green "Pull request size ($changed_lines lines) under threshold ($lines_threshold)."
 	fi
-	pullrequest-set-size-status "$pullrequest_id" "$status" "$lines_changed" "$lines_threshold"
+	pullrequest-set-size-status "$pullrequest_id" "$status" "$changed_lines" "$lines_threshold"
 }
 
 function show-modified-items
@@ -47,5 +60,5 @@ assert-not-empty SYSTEM_PULLREQUEST_PULLREQUESTID
 reset-pr-statuses $SYSTEM_PULLREQUEST_PULLREQUESTID
 show-modified-items
 azure-pipelines-yaml-protection
-size-validation "$@"
+capture-pr-size-and-perform-size-validation "$@"
 
