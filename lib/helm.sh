@@ -201,12 +201,12 @@ function helm-deploy-validation
 	local deploy_validation_completed=false
 	local deploy_sucess=false
 	local pod_status_pending=false	
+	local prev_pooling_attemps_step=""
 
 	while : 
 		[ "$pooling_attemps" -lt "$max_pooling_attemps" ] && ! $deploy_validation_completed
 	do
 		local pooling_attemps_step=""
-		local prev_pooling_attemps_step=""
 		local pod_ready=""
 		local reason=""
 		local pod_status=$($kubectl_get_pod_cmd | jq -M '.items[0]?.status')
