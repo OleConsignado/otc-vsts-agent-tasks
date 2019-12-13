@@ -233,7 +233,7 @@ function helm-deploy-validation
 				if [ "$reason" = "ImagePullBackOff" ] || [ "$reason" = "ErrImagePull" ]
 				then
 					red "Deployment status is $reason, this means that docker failed while pulling the image. " >&2
-					red "Probably the image does not exists or appropriate credentials is missing." >&2
+					red "Probably the image does not exists or appropriate registry's credentials is missing." >&2
 					deploy_validation_completed=true
 					deploy_sucess=false
 				else
@@ -294,29 +294,29 @@ function helm-deploy-validation
 		elif ! $deploy_validation_completed
 		then
 			red "Could not validate deployment, the POD is taking a long time to get ready, should be something wrong on Kubernetes Cluster." >&2
-			echo "==== POD details (kubectl describe pod):" >&2
+			bgred "==== POD details (kubectl describe pod):" >&2
 			$kubectl_describe_pod_cmd >&2
-			echo "==== End of POD details:" >&2
+			bgred "==== End of POD details" >&2
 		else
 			# TODO: improve log
 			red "Error while trying to start $helm_release_name" >&2
 			local kubectl_logs_cmd="kubectl -n $namespace logs $kubectl_labels_args"
-			echo "==== Current POD logs (kubectl logs):" >&2
+			bgred "==== Current POD logs (kubectl logs):" >&2
 			if ! $kubectl_logs_cmd >&2
 			then
 				yellow "Could not get current POD logs." >&2
 			fi
-			echo "==== End of current POD logs; Previous POD logs (kubectl logs -p):" >&2
+			bgred "==== End of current POD logs; Previous POD logs (kubectl logs -p):" >&2
 			if ! $kubectl_logs_cmd -p >&2
 			then
 				yellow "Could not get previous POD logs." >&2
 			fi			
-			echo "==== End of previous POD logs; POD details (kubectl describe pod):" >&2
+			bgred "==== End of previous POD logs; POD details (kubectl describe pod):" >&2
 			if ! $kubectl_describe_pod_cmd >&2
 			then
 				red "Could not describe POD." >&2
 			fi
-			echo "==== End of POD details:" >&2
+			bgred "==== End of POD details" >&2
 		fi
 
 		helm delete $helm_release_name --purge >&2

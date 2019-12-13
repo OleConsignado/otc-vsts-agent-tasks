@@ -15,3 +15,15 @@ function yellow
 {
 	echo -e "\e[33m${1}"
 }
+
+# Param msg
+function yellow
+{
+	echo -e "\e[33m${1}"
+}
+
+# Param msg
+function bgred
+{
+	echo -e "\e[41m${1}" 
+}
