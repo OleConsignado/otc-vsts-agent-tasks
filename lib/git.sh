@@ -103,7 +103,6 @@ function git-diff-prepare
 function diff-shortstat-result-text-to-json
 {
 	local diff_shortstat="$1"
-	assert-not-empty diff_shortstat
 
 	local insertions=$(echo $diff_shortstat | grep -Po '\K[0-9]+(?= insertions?)')
 	local deletions=$(echo $diff_shortstat | grep -Po '\K[0-9]+(?= deletions?)')
