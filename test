@@ -17,8 +17,8 @@ do
   # Sonarscanner will look for opencover
   mv coverage.opencover.xml "$COMMON_TESTRESULTSDIRECTORY/$PROJECT_NAME.opencover.xml"
 
-  # Cobertura will used for publish test result task
-  mv coverage.cobertura.xml "$COMMON_TESTRESULTSDIRECTORY/$PROJECT_NAME.cobertura.xml"
+  # Cobertura will used for publish test result task 
+  mv coverage.cobertura.xml "$COMMON_TESTRESULTSDIRECTORY/coverage.cobertura.xml"
 
 # https://github.com/tonerdo/coverlet#excluding-from-coverage
 #  	--exclude "[*Adapter]*" \
