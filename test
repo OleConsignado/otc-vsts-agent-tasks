@@ -9,10 +9,17 @@ do
   TEST_DLL_FULLPATH=$(find $TEST_PROJ_BIN_DIR -name $TEST_DLL_FILENAME)
   echo "Testing '$PROJECT_NAME' ..."
   /root/.dotnet/tools/coverlet "$TEST_DLL_FULLPATH" \
-    --format "opencover" \
-  	--output "$COMMON_TESTRESULTSDIRECTORY/$PROJECT_NAME.opencover.xml" \
+        --format "opencover" \
+        --format="cobertura" \
   	--target "dotnet" \
   	--targetargs "test $TEST_PROJ --no-build"
+
+  # Sonarscanner will look for opencover
+  mv coverage.opencover.xml "$COMMON_TESTRESULTSDIRECTORY/$PROJECT_NAME.opencover.xml"
+
+  # Cobertura will used for publish test result task
+  mv coverage.cobertura.xml "$COMMON_TESTRESULTSDIRECTORY/$PROJECT_NAME.cobertura.xml"
+
 # https://github.com/tonerdo/coverlet#excluding-from-coverage
 #  	--exclude "[*Adapter]*" \
 #  	--exclude "[*WebApi]*"
