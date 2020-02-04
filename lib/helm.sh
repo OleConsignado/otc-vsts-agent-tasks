@@ -356,10 +356,10 @@ function helm-deploy
 	if [ -z "$chart_name" ]
 	then
 		chart_name=$(discover-chart-name "$helm_dir")
-	else
-
 	fi
 	
+	local return_code=0
+
 	if ! helm-dry-run "$helm_dir" >&2
 	then
 		return $HELM_DEPLOY_DRY_RUN_FAILED
@@ -370,14 +370,13 @@ function helm-deploy
 	if ! helm-install-or-upgrade "$helm_dir" "$namespace" \
 		"$release_name" "Name=$chart_name" >&2
 	then
-		return $HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED
-	fi
-	
-	# Validation
-	if ! helm-deploy-validation "$namespace" "$release_name" >&2 
+		return_code=$HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED
+	elif ! helm-deploy-validation "$namespace" "$release_name" >&2 # Validation
 	then
-		return $HELM_DEPLOY_VALIDATION_FAILED
+		return_code=$HELM_DEPLOY_VALIDATION_FAILED
 	fi
 
 	echo $release_name
+
+	return $return_code
 }

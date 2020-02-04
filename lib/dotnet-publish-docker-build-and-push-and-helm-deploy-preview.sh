@@ -83,12 +83,23 @@ function dotnet-publish-docker-build-and-push-and-helm-deploy-preview
 
 		local release_name=$(cat $release_name_file)
 		rm $release_name_file
-		
+
+		if [ -z "$release_name" ]
+		then
+			red "CRITICAL ERROR" >&2
+			echo "Could not get release name, not that this is not a regular error." >&2
+			echo "If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
+			echo "or there is a BUG in this script." > &2
+			exit 109
+		fi
+
 		if ! $helm_deploy_success
 		then
 			helm delete $release_name --purge >&2
 		fi
 		
 		echo $release_name
+
+		return $helm_deploy_success
 	done
 }

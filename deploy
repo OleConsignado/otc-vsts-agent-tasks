@@ -23,6 +23,16 @@ function main
 		> $release_name_file && helm_deploy_success=$?
 
 	local release_name=$(cat $release_name_file)
+	
+	if [ -z "$release_name" ]
+	then
+		red "CRITICAL ERROR" >&2
+		echo "Could not get release name, not that this is not a regular error." >&2
+		echo "If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
+		echo "or there is a BUG in this script." > &2
+		exit 109
+	fi
+
 	rm $release_name_file
 
 	if ! $helm_deploy_success
@@ -35,7 +45,7 @@ function main
 			echo "Could not get history for '$release_name'. This is not a regular error! " >&2
 			echo "At this point, release '$release_name' should exists, neither it successfully deployed " >&2
 			echo "or not. If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
-			echo "or there is a BUG in this script."
+			echo "or there is a BUG in this script." >&2
 
 			exit 117
 		fi
