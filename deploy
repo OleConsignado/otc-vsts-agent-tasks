@@ -17,10 +17,10 @@ function main
 	assert-not-empty namespace
 	
 	local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
-	local helm_deploy_success=false
+	local helm_deploy_status_code=1 # assume error
 
 	helm-deploy "$helm_dir" "$namespace" "$custom_name" \
-		> $release_name_file && helm_deploy_success=$?
+		> $release_name_file && helm_deploy_status_code=$?
 
 	local release_name=$(cat $release_name_file)
 	
@@ -34,15 +34,14 @@ function main
 
 	rm $release_name_file
 
-	if ! $helm_deploy_success
+	if [ "$helm_deploy_status_code" -ne "0" ]
 	then
 		local history_count=$(($(helm history $release_name | wc -l) - 1))
 
 		if ! echo $history_count | egrep '^[0-9]+$' > /dev/null 2>&1
 		then
-			red "CRITICAL ERROR" >&2
-			echo "Could not get history for '$release_name'. At this point, release '$release_name' " >&2
-			echo "should exists, neither it successfully deployed or not." >&2
+			red "Could not get history for '$release_name'. At this point, release '$release_name' " >&2
+			red "should exists, neither it successfully deployed or not." >&2
 			echo $HELM_GENERAL_DEPLOY_ERROR_MESSAGE >&2
 
 			exit 117
@@ -59,7 +58,7 @@ function main
 		fi
 	fi
 
-	exit $helm_deploy_success
+	exit $helm_deploy_status_code
 }
 
 main "$@"

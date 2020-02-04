@@ -76,10 +76,10 @@ function dotnet-docker-deploy-preview
 		assert-success edit-helm-tag "$helm_dir" "$tag" >&2
 		
 		local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
-		local helm_deploy_success=false
+		local helm_deploy_status_code=1 # assume error
 
 		helm-deploy "$helm_dir" "$namespace" \
-			"${chart_name}${artifacts_suffix}" > $release_name_file && helm_deploy_success=$?
+			"${chart_name}${artifacts_suffix}" > $release_name_file && helm_deploy_status_code=$?
 
 		local release_name=$(cat $release_name_file)
 		rm $release_name_file
@@ -91,13 +91,13 @@ function dotnet-docker-deploy-preview
 			exit 109
 		fi
 
-		if ! $helm_deploy_success
+		if [ "$helm_deploy_status_code" -ne "0" ]
 		then
 			helm delete $release_name --purge >&2
 		fi
 		
 		echo $release_name
 
-		return $helm_deploy_success
+		return $helm_deploy_status_code
 	done
 }
