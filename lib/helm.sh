@@ -336,7 +336,9 @@ HELM_DEPLOY_DRY_RUN_FAILED=11
 HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED=12
 HELM_DEPLOY_VALIDATION_FAILED=13
 HELM_GENERAL_DEPLOY_ERROR_MESSAGE='This is not a regular error. If you reading this message, 
-helm/kubernetes apiserver could became unvailable or there is a BUG in this script.'
+helm/kubernetes apiserver could became unvailable or there is a BUG in this script.
+**Favor tentar novamente. Caso o problema persista, gentileza reportar a celula de 
+arquitetura e/ou infraestrutura.**'
 # Param helm_dir - Helm chart directory
 # Param namespace
 # Param custom_name (optional) - artifact name, applyed to release name and values.Name

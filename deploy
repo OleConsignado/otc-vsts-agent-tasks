@@ -36,7 +36,7 @@ function main
 
 	if ! $helm_deploy_success
 	then
-		local history_count=$(helm history -ojson $release_name | jq '. | length')
+		local history_count=$(($(helm history $release_name | wc -l) - 1))
 
 		if ! echo $history_count | egrep '^[0-9]+$' > /dev/null 2>&1
 		then
