@@ -14,7 +14,7 @@ DEPLOY_SOLUTION_NOTHING_TO_PUBLISH=10
 #       - helm release name
 #       - values Name key (chartname + artifacts_suffix)
 # Output 1 - release_name's
-function deploy
+function dotnet-publish-docker-build-and-push-and-helm-deploy-preview
 {
 	local base_dir=$(realpath $1)
 	local dotnet_configuration=$2
@@ -75,18 +75,20 @@ function deploy
 		assert-success docker-push "$docker_image_full_name_and_tag" >&2
 		assert-success edit-helm-tag "$helm_dir" "$tag" >&2
 		
-		helm-dry-run "$helm_dir" >&2 || return $?
+		local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
+		local helm_deploy_success=false
 
-		# Deploy phase
-		local values_name="${chart_name}${artifacts_suffix}"
-		local release_name="r-${chart_name}-${namespace}${artifacts_suffix}"
+		helm-deploy "$helm_dir" "$namespace" \
+			"${chart_name}${artifacts_suffix}" > $release_name_file && helm_deploy_success=$?
 
-		helm-install-or-upgrade "$helm_dir" "$namespace" \
-			"$release_name" "Name=$values_name" >&2 || return $?
+		local release_name=$(cat $release_name_file)
+		rm $release_name_file
 		
-		# Validation
-		helm-deploy-validation "$namespace" "$release_name" >&2 || return $?
-
+		if ! $helm_deploy_success
+		then
+			helm delete $release_name --purge >&2
+		fi
+		
 		echo $release_name
 	done
 }

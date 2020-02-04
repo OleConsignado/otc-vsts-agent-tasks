@@ -1,0 +1,57 @@
+#!/bin/bash
+
+source <(otc-task-include lib/filesystem.sh)
+source <(otc-task-include lib/helm.sh)
+source <(otc-task-include lib/assert.sh)
+source <(otc-task-include lib/console.sh)
+
+# Param helm_dir - Helm chart directory
+# Param namespace
+function main
+{
+	local helm_dir="$1"
+	local namespace="$2"
+	local custom_name="$3" #optional
+
+	assert-not-empty helm_dir
+	assert-not-empty namespace
+	
+	local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
+	local helm_deploy_success=false
+
+	helm-deploy "$helm_dir" "$namespace" "$custom_name" \
+		> $release_name_file && helm_deploy_success=$?
+
+	local release_name=$(cat $release_name_file)
+	rm $release_name_file
+
+	if ! $helm_deploy_success
+	then
+		local history_count=$(helm history -ojson $release_name | jq '. | length')
+
+		if ! echo $history_count | egrep '^[0-9]+$' > /dev/null 2>&1
+		then
+			red "CRITICAL ERROR" >&2
+			echo "Could not get history for '$release_name'. This is not a regular error! " >&2
+			echo "At this point, release '$release_name' should exists, neither it successfully deployed " >&2
+			echo "or not. If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
+			echo "or there is a BUG in this script."
+
+			exit 117
+		fi
+
+		if [ "$history_count" -gt "0" ]
+		then
+			red "As helm deploy failed, rolling back to previous revision." >&2
+			assert-success helm rollback $release_name 0 >&2
+		else
+			red "Seems that is the first '$release_name' release." >&2
+			red "As helm deploy has failed, going to deleting it." >&2
+			assert-success helm delete $release_name --purge >&2
+		fi
+	fi
+
+	exit $helm_deploy_success
+}
+
+main "$@"

@@ -5,7 +5,7 @@ source <(otc-task-include lib/vsts.sh)
 source <(otc-task-include lib/dotnet.sh)
 source <(otc-task-include lib/docker.sh)
 source <(otc-task-include lib/helm.sh)
-source <(otc-task-include lib/deploy.sh)
+source <(otc-task-include lib/dotnet-publish-docker-build-and-push-and-helm-deploy-preview.sh)
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/console.sh)
@@ -103,8 +103,9 @@ function main
 	local deployed_releases_list=$(mktemp -t "deployed-release-$BUILD_BUILDID-XXXXXXXX")
 	deploy_status='failed'
 
-	if deploy "$base_dir" "$configuration" "$tag" "$namespace" \
-			"$artifact_suffix" > $deployed_releases_list
+	if dotnet-publish-docker-build-and-push-and-helm-deploy-preview \
+		"$base_dir" "$configuration" "$tag" "$namespace" \
+		"$artifact_suffix" > $deployed_releases_list
 	then
 		deploy_status='succeeded'
 
@@ -138,6 +139,10 @@ function main
 		# finalize task will look for this file in order to determine if 
 		# deploy preview failed in a regurlar way (not crashed)
 		touch deploy-preview-regular-fail 
+
+		echo "A tarefa deploy-preview falhou. É provável que a falha tenha sido causada por alguma questão " >&2
+		echo "introduzida no novo código, ou há um problema no ambiente (provavelmente temporário)." >&2
+		echo "As mensagens no log (logo acima), constumam expor, as vezes de forma clara, a causa da falha. " >&2
 
 		return 101
 	fi	
