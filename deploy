@@ -26,10 +26,9 @@ function main
 	
 	if [ -z "$release_name" ]
 	then
-		red "CRITICAL ERROR" >&2
-		echo "Could not get release name, not that this is not a regular error." >&2
-		echo "If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
-		echo "or there is a BUG in this script." > &2
+		red "Could not get release name." >&2
+		echo $HELM_GENERAL_DEPLOY_ERROR_MESSAGE >&2
+
 		exit 109
 	fi
 
@@ -42,10 +41,9 @@ function main
 		if ! echo $history_count | egrep '^[0-9]+$' > /dev/null 2>&1
 		then
 			red "CRITICAL ERROR" >&2
-			echo "Could not get history for '$release_name'. This is not a regular error! " >&2
-			echo "At this point, release '$release_name' should exists, neither it successfully deployed " >&2
-			echo "or not. If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
-			echo "or there is a BUG in this script." >&2
+			echo "Could not get history for '$release_name'. At this point, release '$release_name' " >&2
+			echo "should exists, neither it successfully deployed or not." >&2
+			echo $HELM_GENERAL_DEPLOY_ERROR_MESSAGE >&2
 
 			exit 117
 		fi

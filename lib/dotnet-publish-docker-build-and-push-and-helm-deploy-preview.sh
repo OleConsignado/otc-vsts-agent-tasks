@@ -14,7 +14,7 @@ DEPLOY_SOLUTION_NOTHING_TO_PUBLISH=10
 #       - helm release name
 #       - values Name key (chartname + artifacts_suffix)
 # Output 1 - release_name's
-function dotnet-publish-docker-build-and-push-and-helm-deploy-preview
+function dotnet-docker-deploy-preview
 {
 	local base_dir=$(realpath $1)
 	local dotnet_configuration=$2
@@ -86,10 +86,8 @@ function dotnet-publish-docker-build-and-push-and-helm-deploy-preview
 
 		if [ -z "$release_name" ]
 		then
-			red "CRITICAL ERROR" >&2
-			echo "Could not get release name, not that this is not a regular error." >&2
-			echo "If you reading this message, helm/kubernetes apiserver could became unvailable "  >&2
-			echo "or there is a BUG in this script." > &2
+			red "Could not get release name." >&2
+			echo $HELM_GENERAL_DEPLOY_ERROR_MESSAGE >&2
 			exit 109
 		fi
 
