@@ -17,10 +17,10 @@ function main
 	assert-not-empty namespace
 	
 	local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
-	local helm_deploy_status_code=1 # assume error
+	local helm_deploy_status_code=0 # assume success
 
 	helm-deploy "$helm_dir" "$namespace" "$custom_name" \
-		> $release_name_file && helm_deploy_status_code=$?
+		> $release_name_file || helm_deploy_status_code=$?
 
 	local release_name=$(cat $release_name_file)
 	

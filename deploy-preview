@@ -47,6 +47,7 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
 # Param namespace
 # Param configuration
 # Param base_dir (OPTIONAL - default "$BUILD_SOURCESDIRECTORY/Source")
+# Param artifact_suffix (OPTIONAL) - valid only for no PR scenario
 # Required environment variables:
 #   - BUILD_REASON
 #   - BUILD_BUILDID
@@ -58,7 +59,8 @@ function main
 {
 	local namespace=$1
 	local configuration=$2
-	local base_dir="$3"
+	local base_dir="$3" # Optional
+	local artifact_suffix="$4" # Optional (only for no PR scenario)
 
 	if [ -z "$base_dir" ]
 	then
@@ -83,7 +85,7 @@ function main
 		pullrequest_id=$SYSTEM_PULLREQUEST_PULLREQUESTID
 	fi
 
-	local artifact_suffix=''
+	
 	local tag=''
 	local deploy_status='pending'
 	
