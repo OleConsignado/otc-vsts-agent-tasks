@@ -1,6 +1,6 @@
-#------------------------------
-# Depends on assert.sh; vsts.sh
-#------------------------------
+#------------------------------------------
+# Depends on assert.sh; vsts.sh; console.sh
+#------------------------------------------
 
 # Required variable: SYSTEM_WORKFOLDER
 assert-not-empty SYSTEM_WORKFOLDER

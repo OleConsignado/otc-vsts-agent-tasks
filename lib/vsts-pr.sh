@@ -1,6 +1,6 @@
-#------------------------------
-# Depends on assert.sh; vsts.sh
-#------------------------------
+#------------------------------------------
+# Depends on assert.sh; vsts.sh; console.sh
+#------------------------------------------
 
 # Param pullrequest_id
 # Param pr_size_data_json, schema example:

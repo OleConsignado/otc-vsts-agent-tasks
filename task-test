@@ -3,7 +3,7 @@
 source <(otc-task-include lib/git.sh)
 source <(otc-task-include lib/assert.sh)
 source <(otc-task-include lib/vsts.sh)
-#source <(otc-task-include lib/console.sh)
+source <(otc-task-include lib/console.sh)
 #source <(otc-task-include lib/azure-pipelines-yaml-protection.sh)
 #source <(otc-task-include lib/vsts-pr-statuses.sh)
 source <(otc-task-include lib/vsts-pr.sh)

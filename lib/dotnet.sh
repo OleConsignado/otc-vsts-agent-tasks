@@ -1,6 +1,6 @@
-#------------------------------------
-# Depends on filesystem.sh; assert.sh
-#------------------------------------
+#------------------------------------------------
+# Depends on filesystem.sh; assert.sh; console.sh
+#------------------------------------------------
 
 # dotnet-publish
 # Perform dotnet publish

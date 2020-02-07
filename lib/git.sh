@@ -1,6 +1,6 @@
-#---------------------
-# Depends on assert.sh
-#---------------------
+#---------------------------------
+# Depends on assert.sh; console.sh
+#---------------------------------
 
 # Required environment variables:
 # - BUILD_REPOSITORY_URI
@@ -61,7 +61,8 @@ function commit-changes-and-tag
 	git tag "$tag"
 	if ! git push -u authrepo $BUILD_SOURCEBRANCHNAME --tags > gitpush.log 2>&1 # prevent expose creedential
 	then
-		echo "commit-changes-and-tag: git push error." >&2
+		red "commit-changes-and-tag: git push error." >&2
+		echo "Probably it is a permission issue, check if pipeline user is able to commit and push to this repository/branch." >&2
 		return $TAG_AND_COMMIT_CHANGES_PUSH_ERROR
 	fi
 	git remote rm authrepo > /dev/null 2>&1

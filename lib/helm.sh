@@ -318,12 +318,68 @@ function helm-deploy-validation
 			fi
 			bgred "==== End of POD details" >&2
 		fi
-
-		helm delete $helm_release_name --purge >&2
+		echo >&2
+		red "$helm_release_name not deployed." >&2
 
 		return $HELM_DEPLOY_VALIDATION_POD_START_FAIL
 	fi
 
 	echo >&2
 	green "$helm_release_name successfuly deployed." >&2
+}
+
+# helm-deploy
+# Perform install-or-upgrade then deploy validation
+
+HELM_DEPLOY_HELM_DIR_NOT_FOUND=9
+HELM_DEPLOY_DRY_RUN_FAILED=11
+HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED=12
+HELM_DEPLOY_VALIDATION_FAILED=13
+HELM_GENERAL_DEPLOY_ERROR_MESSAGE='This is not a regular error. If you reading this message, 
+helm/kubernetes apiserver could became unvailable or there is a BUG in this script.
+**Favor tentar novamente. Caso o problema persista, gentileza reportar a celula de 
+arquitetura e/ou infraestrutura.**'
+# Param helm_dir - Helm chart directory
+# Param namespace
+# Param custom_name (optional) - artifact name, applyed to release name and values.Name
+# Output 1 - release_name's
+function helm-deploy
+{
+	local helm_dir="$1"
+	local namespace="$2"
+	local custom_name="$3"
+
+	assert-not-empty helm_dir
+	assert-not-empty namespace
+
+	directory-exists "$helm_dir" || return $HELM_DEPLOY_HELM_DIR_NOT_FOUND
+
+	local chart_name="$custom_name"
+
+	if [ -z "$chart_name" ]
+	then
+		chart_name=$(discover-chart-name "$helm_dir")
+	fi
+	
+	local return_code=0
+
+	if ! helm-dry-run "$helm_dir" >&2
+	then
+		return $HELM_DEPLOY_DRY_RUN_FAILED
+	fi
+
+	local release_name="r-${chart_name}-${namespace}"
+
+	if ! helm-install-or-upgrade "$helm_dir" "$namespace" \
+		"$release_name" "Name=$chart_name" >&2
+	then
+		return_code=$HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED
+	elif ! helm-deploy-validation "$namespace" "$release_name" >&2 # Validation
+	then
+		return_code=$HELM_DEPLOY_VALIDATION_FAILED
+	fi
+
+	echo $release_name
+
+	return $return_code
 }

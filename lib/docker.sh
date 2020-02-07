@@ -1,6 +1,6 @@
-#------------------------------------
-# Depends on filesystem.sh; assert.sh
-#------------------------------------
+#------------------------------------------------
+# Depends on filesystem.sh; assert.sh; console.sh
+#------------------------------------------------
 
 # docker-build
 # Usage: docker-build image_contents_dir image_full_name_and_tag
