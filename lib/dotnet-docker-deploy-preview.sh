@@ -94,10 +94,13 @@ function dotnet-docker-deploy-preview
 		if [ "$helm_deploy_status_code" -ne "0" ]
 		then
 			helm delete $release_name --purge >&2
+
+			# if error, return imediatelly
+			return $helm_deploy_status_code
 		fi
 		
 		echo $release_name
-
-		return $helm_deploy_status_code
 	done
+
+	return $helm_deploy_status_code
 }

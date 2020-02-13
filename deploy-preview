@@ -134,6 +134,7 @@ function main
 		assert-success pullrequest-set-deploy-preview-status \
 			"$pullrequest_id" \
 			"$deploy_status"
+
 	fi
 
 	if [ "$deploy_status" != "succeeded" ]
@@ -142,11 +143,16 @@ function main
 		# deploy preview failed in a regurlar way (not crashed)
 		touch deploy-preview-regular-fail 
 
-		echo "A tarefa deploy-preview falhou. É provável que a falha tenha sido causada por alguma questão " >&2
-		echo "introduzida no novo código, ou há um problema no ambiente (provavelmente temporário)." >&2
-		echo "As mensagens no log (logo acima), constumam expor, as vezes de forma clara, a causa da falha. " >&2
+		red "A tarefa deploy-preview falhou. É provável que a falha tenha sido causada por alguma questão " >&2
+		red "introduzida no novo código, ou há um problema no ambiente (provavelmente temporário)." >&2
+		red "As mensagens no log (logo acima), constumam expor, as vezes de forma clara, a causa da falha. " >&2
 
-		return 101
+		if ! $is_pullrequest
+		then
+			# Fail pipeline only if not PR build, for PR scenarios
+			# deploy_preview fail will be set as PR status
+			return 101
+		fi
 	fi	
 }
 
