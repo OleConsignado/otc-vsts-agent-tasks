@@ -29,7 +29,7 @@ function update-version
 		echo "Could not edit version in package.json, please check if it matches '$version_pattern'." >&2
 		exit 1
 	fi
-	local new_version=$(echo $current_version | sed -E 's/'$version_pattern'/\1.\2.\3-v$(Build.BuildId)/')
+	local new_version=$(echo $current_version | sed -E 's/'$version_pattern'/\1.\2.\3-v'$BUILD_BUILDID'/')
 	jq -M '. + { "version": "'$new_version'" }' package.json > package.json.new
 	rm package.json
 	mv package.json.new package.json
