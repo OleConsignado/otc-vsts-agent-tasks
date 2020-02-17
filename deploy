@@ -33,11 +33,15 @@ function main
 
 	if [ "$helm_deploy_status_code" -eq "$HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND" ]
 	then
-		echo "O arquivo com os valores para o ambiente '$ENVIRONMENT_NAME' nao foi encontrado." >&2
-		echo "Portanto nao sera possivel realizar o deploy neste ambiente." >&2
-		echo "Para corrigir este problema, adicione o arquivo '$custom_value' no diretorio do " >&2
-		echo "helm chart (normalmente Kubernetes.Helm)." >&2
-		
+		echo "----------------------------------------------------------------------------------------------------------------" >&2
+		echo "O arquivo com os valores para o ambiente '$ENVIRONMENT_NAME' nao foi encontrado, logo nao sera possivel realizar" >&2
+		echo "o deploy neste ambiente." >&2
+		echo "Para corrigir este problema, adicione o arquivo '$custom_value' no diretorio do helm chart (normalmente Kubernetes.Helm)." >&2
+		echo "" >&2
+		echo "IMPORTANTE: Dados sensiveis, como strings de conexao, credenciais para servicos externos, etc, nao devem ser inseridos" >&2
+		echo "==========  neste arquivo. Para isso, deverao ser utilizados secrets (em caso de dúvidas, conversar com " >&2
+		echo "            arquitetura/infra-estrutura)." >&2
+		echo "----------------------------------------------------------------------------------------------------------------" >&2
 		exit 103
 	fi
 
