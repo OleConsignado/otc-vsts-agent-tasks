@@ -25,11 +25,21 @@ function main
 	if ! [ -z "$ENVIRONMENT_NAME" ]
 	then
 		custom_value="$(echo $ENVIRONMENT_NAME | awk '{ print tolower($0) }')-values.yaml"
-		echo "Using '$custom_value' as helm values" >&2
+		echo "Using '$custom_value' as helm values." >&2
 	fi
 
 	helm-deploy "$helm_dir" "$namespace" "$custom_name" "$custom_value" \
 		> $release_name_file || helm_deploy_status_code=$?
+
+	if [ "$helm_deploy_status_code" -eq "$HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND"]
+	then
+		echo "O arquivo com os valores para o ambiente '$ENVIRONMENT_NAME' nao foi encontrado." >&2
+		echo "Portanto nao sera possivel realizar o deploy neste ambiente." >&2
+		echo "Para corrigir este problema, adicione o arquivo '$custom_value' no diretorio do " >&2
+		echo "helm chart (normalmente Kubernetes.Helm)."
+		
+		exit 103
+	fi
 
 	local release_name=$(cat $release_name_file)
 	
