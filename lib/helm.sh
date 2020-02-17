@@ -100,33 +100,24 @@ HELM_INSTALL_OR_UPGRADE_UPGR_FAILED=60
 # Param helm_dir
 # Param namespace
 # Param helm_release_name
-# Param helm_values - ex: item1=val1 item2=val2
+# Param helm_xargs (optional) helm extra arguments ex: item1=val1 item2=val2
 function helm-install-or-upgrade
 {
 	local helm_dir=$1
 	local namespace=$2
 	local helm_release_name=$3
 	shift 3
-	local helm_custom_values=$@
+	local helm_xargs=$@
+
 	directory-exists "$helm_dir" || return $HELM_INSTALL_OR_UPGRADE_HELM_DIR_NOT_FOUND
 	assert-not-empty namespace
 	assert-not-empty helm_release_name
-	local helm_set_arg=''
-	for item in $helm_custom_values
-	do 
-		if ! echo "$item" | egrep '^[a-zA-Z_0-9-]+=[a-zA-Z_0-9-]+$' > /dev/null
-		then
-			echo "helm-install-or-upgrade: Argument '$item' is invalid for helm_custom_values" >&2
-			return $HELM_INSTALL_OR_UPGRADE_INVALID_CUSTOM_VALUE
-		fi
-		helm_set_arg="$helm_set_arg --set $item"
-	done
 
 	if helm-release-exists "$namespace" "$helm_release_name"
 	then
 	    # Release already exists, will upgrade
 	    echo "Upgrading helm $helm_release_name ..."
-	    if ! helm --namespace="$namespace" upgrade "$helm_release_name" $helm_set_arg "$helm_dir"
+	    if ! helm --namespace="$namespace" upgrade "$helm_release_name" $helm_xargs "$helm_dir"
 	    then
 	    	echo "helm-install-or-upgrade: helm upgrade failed." >&2
 	    	return $HELM_INSTALL_OR_UPGRADE_UPGR_FAILED
@@ -134,7 +125,7 @@ function helm-install-or-upgrade
 	else
 		# New release
 		echo "Installing helm $helm_release_name ..."
-		if ! helm --namespace="$namespace" install --name="$helm_release_name" $helm_set_arg "$helm_dir"
+		if ! helm --namespace="$namespace" install --name="$helm_release_name" $helm_xargs "$helm_dir"
 		then
 			echo "helm-install-or-upgrade: helm install failed." >&2
 			# Delete release only if is a new release
@@ -335,6 +326,7 @@ HELM_DEPLOY_HELM_DIR_NOT_FOUND=9
 HELM_DEPLOY_DRY_RUN_FAILED=11
 HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED=12
 HELM_DEPLOY_VALIDATION_FAILED=13
+HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND=14
 HELM_GENERAL_DEPLOY_ERROR_MESSAGE='This is not a regular error. If you reading this message, 
 helm/kubernetes apiserver could became unvailable or there is a BUG in this script.
 **Favor tentar novamente. Caso o problema persista, gentileza reportar a celula de 
@@ -342,12 +334,14 @@ arquitetura e/ou infraestrutura.**'
 # Param helm_dir - Helm chart directory
 # Param namespace
 # Param custom_name (optional) - artifact name, applyed to release name and values.Name
+# Param custom_values_file (optional) - path to custom values (relative to helm_dir)
 # Output 1 - release_name's
 function helm-deploy
 {
 	local helm_dir="$1"
 	local namespace="$2"
 	local custom_name="$3"
+	local custom_values_file="$4"
 
 	assert-not-empty helm_dir
 	assert-not-empty namespace
@@ -361,6 +355,23 @@ function helm-deploy
 		chart_name=$(discover-chart-name "$helm_dir")
 	fi
 	
+	local helm_values_arg=''
+
+	if ! [ -z "$custom_values_file" ]
+	then
+		local custom_values_file_fullpath="$helm_dir/$custom_values_file"
+
+		if [ -f "$custom_values_file_fullpath" ]
+		then
+			green "'$custom_values_file_fullpath' found!" >&2
+		else
+			red "File not found '$custom_values_file_fullpath'" >&2
+			return $HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND
+		fi
+
+		helm_values_arg="--values $custom_values_file_fullpath"
+	fi
+
 	local return_code=0
 
 	if ! helm-dry-run "$helm_dir" >&2
@@ -371,7 +382,7 @@ function helm-deploy
 	local release_name="r-${chart_name}-${namespace}"
 
 	if ! helm-install-or-upgrade "$helm_dir" "$namespace" \
-		"$release_name" "Name=$chart_name" >&2
+		"$release_name" "--set Name=$chart_name $helm_values_arg" >&2
 	then
 		return_code=$HELM_DEPLOY_INSTALL_OR_UPGRADE_FAILED
 	elif ! helm-deploy-validation "$namespace" "$release_name" >&2 # Validation
