@@ -42,6 +42,7 @@ function main
 		echo "==========  neste arquivo. Para isso, deverao ser utilizados secrets (em caso de dúvidas, conversar com " >&2
 		echo "            arquitetura/infra-estrutura)." >&2
 		echo "----------------------------------------------------------------------------------------------------------------" >&2
+		echo '{ "Level": "Error", "Message": "teste" }' >> /proc/1/fd/1
 		exit 103
 	fi
 
