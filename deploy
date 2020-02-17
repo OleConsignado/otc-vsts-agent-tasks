@@ -31,7 +31,7 @@ function main
 	helm-deploy "$helm_dir" "$namespace" "$custom_name" "$custom_value" \
 		> $release_name_file || helm_deploy_status_code=$?
 
-	if [ "$helm_deploy_status_code" -eq "$HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND"]
+	if [ "$helm_deploy_status_code" -eq "$HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND" ]
 	then
 		echo "O arquivo com os valores para o ambiente '$ENVIRONMENT_NAME' nao foi encontrado." >&2
 		echo "Portanto nao sera possivel realizar o deploy neste ambiente." >&2
