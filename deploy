@@ -7,6 +7,7 @@ source <(otc-task-include lib/console.sh)
 
 # Param helm_dir - Helm chart directory
 # Param namespace
+# Look for ENVIRONMENT_NAME environment var
 function main
 {
 	local helm_dir="$1"
@@ -19,7 +20,15 @@ function main
 	local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
 	local helm_deploy_status_code=0 # assume success
 
-	helm-deploy "$helm_dir" "$namespace" "$custom_name" \
+	local custom_value=''
+
+	if ! [ -z "$ENVIRONMENT_NAME" ]
+	then
+		custom_value="$(echo $ENVIRONMENT_NAME | awk '{ print tolower($0) }')-values.yaml"
+		echo "Using '$custom_value' as helm values" >&2
+	fi
+
+	helm-deploy "$helm_dir" "$namespace" "$custom_name" "$custom_value" \
 		> $release_name_file || helm_deploy_status_code=$?
 
 	local release_name=$(cat $release_name_file)
