@@ -36,7 +36,7 @@ function main
 		echo "O arquivo com os valores para o ambiente '$ENVIRONMENT_NAME' nao foi encontrado." >&2
 		echo "Portanto nao sera possivel realizar o deploy neste ambiente." >&2
 		echo "Para corrigir este problema, adicione o arquivo '$custom_value' no diretorio do " >&2
-		echo "helm chart (normalmente Kubernetes.Helm)."
+		echo "helm chart (normalmente Kubernetes.Helm)." >&2
 		
 		exit 103
 	fi
