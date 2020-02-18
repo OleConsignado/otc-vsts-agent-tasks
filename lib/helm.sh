@@ -48,6 +48,23 @@ function edit-helm-tag
 	git add "$values_path"
 }
 
+GET_HELM_TAG_HELM_DIR_NOT_FOUND=90
+GET_HELM_TAG_VALUES_NOT_FOUND=91
+
+# Param helm_dir
+function get-helm-tag
+{
+	local helm_dir=$1
+	directory-exists "$helm_dir" || return $GET_HELM_TAG_HELM_DIR_NOT_FOUND
+	local values_path="$helm_dir/values.yaml"
+	if ! [ -f "$values_path" ]
+	then
+		echo "get-helm-tag: File '$values_path' not found." >&2
+		return $GET_HELM_TAG_VALUES_NOT_FOUND
+	fi	
+	egrep '^  tag: .*' $values_path | awk '{ print $2 }'
+}
+
 # helm-dry-run
 # Usage: helm-dry-run helm_dir
 
