@@ -281,7 +281,10 @@ function helm-deploy-validation
 		if $pod_status_pending
 		then
 			red "Error while trying to start $helm_release_name." >&2
-			echo "POD pending: Kubernetes low on resources." >&2
+			echo "------------------------------------------------------------------------------------------" >&2
+			echo "POD pending: A causa mais provavel eh que o ambiente nao possue recursos suficientes para " >&2
+			echo "aplicar essa publicacao, no momento." >&2
+			echo "------------------------------------------------------------------------------------------" >&2
 		elif ! $deploy_validation_completed
 		then
 			red "Could not validate deployment, the POD is taking a long time to get ready, should be something wrong on Kubernetes Cluster." >&2

@@ -143,9 +143,11 @@ function main
 		# deploy preview failed in a regurlar way (not crashed)
 		touch deploy-preview-regular-fail 
 
+		red "--------------------------------------------------------------------------------------------" >&2
 		red "A tarefa deploy-preview falhou. É provável que a falha tenha sido causada por alguma questão " >&2
 		red "introduzida no novo código, ou há um problema no ambiente (provavelmente temporário)." >&2
-		red "As mensagens no log (logo acima), constumam expor, as vezes de forma clara, a causa da falha. " >&2
+		red "As mensagens no log (logo acima), costumam expor, as vezes de forma clara, a causa da falha. " >&2
+		red "--------------------------------------------------------------------------------------------" >&2
 
 		if ! $is_pullrequest
 		then
