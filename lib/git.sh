@@ -66,7 +66,6 @@ function commit-changes-and-tag
 		return $TAG_AND_COMMIT_CHANGES_PUSH_ERROR
 	fi
 	git remote rm authrepo > /dev/null 2>&1
-	git checkout $BUILD_SOURCEVERSION > /dev/null 2>&1	
 }
 
 GIT_DIFF_CHECKOUT_ERROR=10
