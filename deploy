@@ -7,12 +7,20 @@ source <(otc-task-include lib/console.sh)
 
 # Param helm_dir - Helm chart directory
 # Param namespace
+# Param custom_name (OPTIONAL)
+# Param custom_values (OPTIONAL) - custom helm values file (path relative to helm_dir)
 # Look for ENVIRONMENT_NAME environment var
 function main
 {
 	local helm_dir="$1"
 	local namespace="$2"
 	local custom_name="$3" #optional
+	local custom_values="$4" #optional
+
+	if ! [ -z "$custom_values" ]
+	then
+		echo "Using '$custom_values' as helm values." >&2
+	fi
 
 	assert-not-empty helm_dir
 	assert-not-empty namespace
@@ -20,15 +28,7 @@ function main
 	local release_name_file=$(mktemp -t "release_name-XXXXXXXX")
 	local helm_deploy_status_code=0 # assume success
 
-	local custom_value=''
-
-	if ! [ -z "$ENVIRONMENT_NAME" ]
-	then
-		custom_value="$(echo $ENVIRONMENT_NAME | awk '{ print tolower($0) }')-values.yaml"
-		echo "Using '$custom_value' as helm values." >&2
-	fi
-
-	helm-deploy "$helm_dir" "$namespace" "$custom_name" "$custom_value" \
+	helm-deploy "$helm_dir" "$namespace" "$custom_name" "$custom_values" \
 		> $release_name_file || helm_deploy_status_code=$?
 
 	if [ "$helm_deploy_status_code" -eq "$HELM_DEPLOY_CUSTOM_VALUES_FILE_NOT_FOUND" ]
@@ -37,7 +37,7 @@ function main
 		echo "O arquivo com os valores para o ambiente '$ENVIRONMENT_NAME' nao foi encontrado, logo nao " >&2
 		echo "sera possivel realizar o deploy neste ambiente." >&2
 		echo "" >&2
-		echo "Para corrigir este problema, adicione o arquivo '$custom_value' no diretorio do helm chart," >&2
+		echo "Para corrigir este problema, adicione o arquivo '$custom_values' no diretorio do helm chart," >&2
 		echo "normalmente Kubernetes.Helm." >&2
 		echo "" >&2
 		echo "IMPORTANTE: Dados sensiveis, como strings de conexao, credenciais para servicos externos, " >&2

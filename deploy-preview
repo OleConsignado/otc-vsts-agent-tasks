@@ -48,6 +48,7 @@ e ela estará disponível enquanto este *Pull Request* estiver aberto."
 # Param configuration
 # Param base_dir (OPTIONAL - default "$BUILD_SOURCESDIRECTORY/Source")
 # Param artifact_suffix (OPTIONAL) - valid only for no PR scenario
+# Param custom_values (OPTIONAL) - custom helm values file (path relative to helm_dir)
 # Required environment variables:
 #   - BUILD_REASON
 #   - BUILD_BUILDID
@@ -61,6 +62,12 @@ function main
 	local configuration=$2
 	local base_dir="$3" # Optional
 	local artifact_suffix="$4" # Optional (only for no PR scenario)
+	local custom_values="$5" # Optional
+
+	if ! [ -z "$custom_values" ]
+	then
+		echo "Using '$custom_values' as helm values." >&2
+	fi		
 
 	if [ -z "$base_dir" ]
 	then
@@ -107,7 +114,7 @@ function main
 
 	if dotnet-docker-deploy-preview \
 		"$base_dir" "$configuration" "$tag" "$namespace" \
-		"$artifact_suffix" > $deployed_releases_list
+		"$artifact_suffix" "$custom_values" > $deployed_releases_list
 	then
 		deploy_status='succeeded'
 

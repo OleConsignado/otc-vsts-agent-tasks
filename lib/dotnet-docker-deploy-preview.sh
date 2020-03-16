@@ -13,6 +13,7 @@ DEPLOY_SOLUTION_NOTHING_TO_PUBLISH=10
 #       - tag
 #       - helm release name
 #       - values Name key (chartname + artifacts_suffix)
+# Param custom_values (OPTIONAL) - custom helm values file (path relative to helm_dir)
 # Output 1 - release_name's
 function dotnet-docker-deploy-preview
 {
@@ -21,6 +22,7 @@ function dotnet-docker-deploy-preview
 	local tag=$3
 	local namespace=$4
 	local artifacts_suffix=$5
+	local custom_values=$6
 
 	assert-not-empty ORGANIZATION
 	directory-exists "$base_dir" || return $DEPLOY_BASE_DIR_NOT_FOUND
@@ -79,7 +81,7 @@ function dotnet-docker-deploy-preview
 		local helm_deploy_status_code=0 # assume success
 
 		helm-deploy "$helm_dir" "$namespace" \
-			"${chart_name}${artifacts_suffix}" > $release_name_file || helm_deploy_status_code=$?
+			"${chart_name}${artifacts_suffix}" "$custom_values" > $release_name_file || helm_deploy_status_code=$?
 
 		local release_name=$(cat $release_name_file)
 		rm $release_name_file
