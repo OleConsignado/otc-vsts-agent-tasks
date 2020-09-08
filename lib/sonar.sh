@@ -26,11 +26,11 @@ function sonar-analysis-validation
 	assert-not-empty SONARSCANNER_END_OUTPUT_FILE
 
 	local task_status_url=$(grep \
-		'INFO: More about the report processing at ' $SONARSCANNER_END_OUTPUT_FILE | \
+		'More about the report processing at ' $SONARSCANNER_END_OUTPUT_FILE | \
 		egrep -o 'https?://.*')
 	
 	local report_url=$(grep \
-		'INFO: ANALYSIS SUCCESSFUL, you can browse ' $SONARSCANNER_END_OUTPUT_FILE | \
+		'ANALYSIS SUCCESSFUL, you can browse ' $SONARSCANNER_END_OUTPUT_FILE | \
 		egrep -o 'https?://.*')
 	
 	local sonar_base_url=$(echo $task_status_url | sed -E 's/\/api\/ce\/task\?id=.*//g')
