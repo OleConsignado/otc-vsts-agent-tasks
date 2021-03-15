@@ -1,0 +1,17 @@
+#!/bin/bash
+
+SONARSCANNER_VERSION_FILE=$1
+
+echo "Verificando se SonarScanner para SPA já existe neste agente de build."
+if [ ! -d ~/.sonar/native-sonar-scanner ]
+then
+    echo "SonarScanner não encontrado."
+
+    echo "Baixando SonarScanner."
+    wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/$SONARSCANNER_VERSION_FILE -O ~/$SONARSCANNER_VERSION_FILE
+
+    echo "Descompactando SonarScanner."
+    unzip ~/$SONARSCANNER_VERSION_FILE -d ~/.sonar/native-sonar-scanner
+else
+    echo "SonarScanner encontrado!"
+fi

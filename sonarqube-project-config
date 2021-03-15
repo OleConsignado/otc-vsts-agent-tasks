@@ -1,0 +1,97 @@
+#!/bin/bash
+
+SONARQUBE_PROJECT_SEARCH_ERROR=1002
+SONARQUBE_CREATE_NEW_PROJECT_ERROR=1003
+SONARQUBE_APPLY_QUALITY_PROFILE_ERROR=1004
+
+function sonarqube_project_search
+{
+    local result=$(curl ${SONARQUBE_HOST}/api/projects/search?projects=$SONAR_PROJECT_KEY \
+        -u $SONARQUBE_USERKEY: \
+        -X GET --silent)
+
+    local project_found=$(echo $result | jq -r -M '.paging.total')
+
+    if [ "$project_found" == "null" ]
+    then
+        echo $result >&2
+        echo "Erro ao tentar localizar o projeto \"${SONAR_PROJECT_KEY}\" no SonarQube. Solicite o apoio do time de arquitetura." >&2
+        return $SONARQUBE_PROJECT_SEARCH_ERROR
+    fi
+
+    if [ $project_found -gt 0 ]
+    then
+        echo "EXISTS"
+    else
+        echo "NOT-EXISTS"
+    fi
+}
+
+function sonarqube_create_new_project
+{
+    echo "Criando novo projeto \"$SONAR_PROJECT_KEY\" no SonarQube."
+
+    local result=$(curl ${SONARQUBE_HOST}/api/projects/create \
+        -u $SONARQUBE_USERKEY: \
+        -X POST --silent \
+        -d name=$SONAR_PROJECT_KEY \
+        -d project=$SONAR_PROJECT_KEY)
+
+    local project_created=$(echo $result | jq -r -M '.project.key')
+
+    if [ "$SONAR_PROJECT_KEY" != "$project_created" ]
+    then
+        echo $result >&2
+        echo "Erro ao tentar criar o projeto \"${SONAR_PROJECT_KEY}\" no SonarQube. Solicite o apoio do time de arquitetura." >&2
+        exit $SONARQUBE_CREATE_NEW_PROJECT_ERROR
+    fi
+
+    echo "Projeto \"$SONAR_PROJECT_KEY\" criado com sucesso!"
+}
+
+function sonarqube_apply_quality_profile
+{
+    local language=$1
+    local profile=$2
+
+    echo "Aplicando default Quality Profile \"$profile\" para \"$language\"."
+
+    local result=$(curl -s ${SONARQUBE_HOST}/api/qualityprofiles/add_project \
+        -u $SONARQUBE_USERKEY: \
+        -X POST \
+        -d project=$SONAR_PROJECT_KEY \
+        -d language=$language \
+        -d qualityProfile="$profile")
+
+    if [ ! -z "$result" ]
+    then
+        echo $result >&2
+        echo "Erro ao tentar ao aplicar Quality Profile para o novo projeto. Solicite o apoio do time de arquitetura." >&2
+        exit $SONARQUBE_APPLY_QUALITY_PROFILE_ERROR
+    fi
+}
+
+SONAR_PROJECT_KEY=$(cat sonar-project.properties | grep sonar.projectKey= | cut -d'=' -f2)
+if [ -z "$SONAR_PROJECT_KEY" ]
+then
+    echo 'Erro ao tentar identificar o nome do projeto. Certifique-se de que a entrada "sonar.projectKey=" do arquivo "sonar-project.properties" foi informada e não contém espaços ou caracteres especiais.' >&2
+    exit 1001
+fi
+
+echo "Verificando se o projeto \"$SONAR_PROJECT_KEY\" já existe no SonarQube."
+SONAR_PROJECT_SEARCH=$(sonarqube_project_search)
+
+if [ "$SONAR_PROJECT_SEARCH" == "EXISTS" ]
+then
+    echo "Projeto encontrado!"
+elif [ "$SONAR_PROJECT_SEARCH" == "NOT-EXISTS" ]
+then
+    echo "Projeto não encontrado."
+    sonarqube_create_new_project
+    sonarqube_apply_quality_profile "css" "Sonar way custom"
+    sonarqube_apply_quality_profile "web" "Sonar way"
+    sonarqube_apply_quality_profile "js" "Sonar way Recommended"
+    sonarqube_apply_quality_profile "ts" "Sonar way recommended"
+else
+    exit $SONARQUBE_PROJECT_SEARCH_ERROR
+fi
