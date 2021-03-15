@@ -19,7 +19,7 @@ function sonarqube_project_search
         return $SONARQUBE_PROJECT_SEARCH_ERROR
     fi
 
-    if [ $project_found -gt 0 ]
+    if [ "$project_found" -gt 0 ]
     then
         echo "EXISTS"
     else
