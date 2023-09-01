@@ -39,7 +39,7 @@ function dotnet-docker-deploy-preview
 		local chart_name=$(discover-chart-name "$helm_dir")
 		local build_output_dir=$(mktemp -d --suffix=-$chart_name)
 		local project_dir=$(dirname "$helm_dir")
-		local docker_image_full_name_and_tag="$ORGANIZATION/$chart_name:$tag"
+		local docker_image_full_name_and_tag="artifactory.santanderbr.corp/docker-hub-ole/oleconsignado/$chart_name:$tag"
 
 		echo -n "Looking for dotnet core .csproj in order to publish it ... " >&2
 
