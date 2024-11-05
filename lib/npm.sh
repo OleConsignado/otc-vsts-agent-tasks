@@ -53,3 +53,18 @@ function npm-build
 	assert-success eacces-workaround-end
 	cd $current_dir
 }
+
+# Param project_dir
+function npm-build-stage
+{
+	local npm_proj_directory="$1"
+	directory-exists "$npm_proj_directory" || return $NPM_PROJECT_DIR_NOT_FOUND
+	local current_dir=$(pwd)
+	cd $npm_proj_directory
+	assert-success update-version
+	assert-success eacces-workaround-init
+	assert-success npm install
+	assert-success npm run build:staging
+	assert-success eacces-workaround-end
+	cd $current_dir
+}
