@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source <(otc-task-include lib/filesystem.sh)
+source <(otc-task-include lib/npm.sh)
+source <(otc-task-include lib/assert.sh)
+source <(otc-task-include lib/console.sh)
+
+npm-build-stage $@
